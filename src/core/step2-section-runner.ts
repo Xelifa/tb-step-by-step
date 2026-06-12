@@ -277,3 +277,192 @@ function ensureSectionsDirectory(): void {
     logger.info('Created output/sections directory');
   }
 }
+
+/**
+ * Main Step 2 section runner
+ */
+export async function runStep2Section(): Promise<Step2SectionRunResult> {
+  let selectedSection: OutlineSection | null = null;
+
+  try {
+    // Load environment
+    await loadEnvFile();
+
+    // Step 1: Verify model gate passed
+    logger.section('Verifying Model Gate');
+    const gatePassed = await isModelGatePassed();
+
+    if (!gatePassed) {
+      throw new Error('Model gate has not passed. Please run: npm run config');
+    }
+    logger.success('Model gate verified ✓');
+
+    // Step 2: Verify Step 1 completed
+    logger.section('Verifying Step 1 Completion');
+    const step1State = await readJSONFile<{ new_prompt_generated: boolean }>('logs/workflow-state.json');
+    if (!step1State || !step1State.new_prompt_generated) {
+      throw new Error('Step 1 has not completed. Please run: npm run step1');
+    }
+
+    const newPrompt = await readTextFile('output/new-prompt.md');
+    if (!newPrompt) {
+      throw new Error('output/new-prompt.md not found. Please run: npm run step1');
+    }
+    logger.success('Step 1 completion verified ✓');
+
+    // Step 3: Verify Step 2 outline generated
+    logger.section('Verifying Step 2 Outline Generation');
+    const step2State = await readJSONFile<{ outline_generated: boolean }>('logs/workflow-state.json');
+    if (!step2State || !step2State.outline_generated) {
+      throw new Error('Step 2 outline has not been generated. Please run: npm run step2:outline');
+    }
+
+    const outlineFile = await readTextFile('output/outline.md');
+    if (!outlineFile) {
+      throw new Error('output/outline.md not found. Please run: npm run step2:outline');
+    }
+
+    const outlineRunLog = await readJSONFile<{ success: boolean }>('logs/step2-outline-run.json');
+    if (!outlineRunLog || !outlineRunLog.success) {
+      throw new Error('logs/step2-outline-run.json not found or unsuccessful. Please run: npm run step2:outline');
+    }
+    logger.success('Step 2 outline generation verified ✓');
+
+    // Step 4: Verify Step 2 outline confirmed
+    await verifyStep2OutlineConfirmed();
+
+    // Step 5: Load model configuration
+    const config = await readJSONFile<ModelConfig>('config/model.json');
+    if (!config) {
+      throw new Error('Model configuration not found. Please run: npm run config');
+    }
+
+    // Step 6: Read all input files
+    const inputs = await readSectionGenerationInputFiles();
+
+    // Step 7: Select section to write
+    selectedSection = await selectSectionToWrite(inputs.outline);
+
+    // Step 8: Check for duplicate file
+    const shouldSkip = await checkDuplicateFile(selectedSection.output_filename);
+
+    if (shouldSkip) {
+      logger.info('');
+      logger.info('Section file not overwritten. Exiting without changes.');
+
+      const result: Step2SectionRunResult = {
+        success: true,
+        checked_at: new Date().toISOString(),
+        provider: config.provider,
+        model: config.model,
+        base_url: config.base_url,
+        selected_section: {
+          title: selectedSection.title,
+          level: selectedSection.level,
+          output_filename: selectedSection.output_filename
+        },
+        output_file: `output/sections/${selectedSection.output_filename}`,
+        overwritten: false,
+        mock_used: false
+      };
+
+      await writeJSONFile('logs/step2-section-run.json', result);
+      return result;
+    }
+
+    // Step 9: Mark section as started
+    const { markSectionStarted } = await import('./state-manager');
+    await markSectionStarted(selectedSection.title);
+
+    // Step 10: Generate section content
+    const sectionContent = await callLLMForSection(config, selectedSection, {
+      newPrompt: inputs.newPrompt,
+      tenderContent: inputs.tenderContent,
+      step2Instructions: inputs.step2Instructions,
+      step3Instructions: inputs.step3Instructions
+    });
+
+    // Step 11: Save section file
+    logger.section('Saving Section File');
+    ensureSectionsDirectory();
+
+    const outputPath = path.join('output/sections', selectedSection.output_filename);
+    await writeTextFile(outputPath, sectionContent);
+    logger.success(`Saved ${outputPath}`);
+
+    // Step 12: Mark section as completed
+    const { markSectionCompleted } = await import('./state-manager');
+    await markSectionCompleted(selectedSection.output_filename);
+
+    // Step 13: Create run log
+    const result: Step2SectionRunResult = {
+      success: true,
+      checked_at: new Date().toISOString(),
+      provider: config.provider,
+      model: config.model,
+      base_url: config.base_url,
+      selected_section: {
+        title: selectedSection.title,
+        level: selectedSection.level,
+        output_filename: selectedSection.output_filename
+      },
+      output_file: outputPath,
+      overwritten: true,
+      mock_used: false
+    };
+
+    await writeJSONFile('logs/step2-section-run.json', result);
+    logger.success('Saved logs/step2-section-run.json');
+
+    logger.section('Section Writing Completed');
+    logger.info('');
+    logger.success(`Section "${selectedSection.title}" generated successfully ✓`);
+    logger.info('');
+    logger.info('Output file:');
+    logger.info(`  ${outputPath}`);
+    logger.info('');
+    logger.info('Workflow state updated:');
+    logger.info('  • current_section: ""');
+    logger.info(`  • completed_sections: +${selectedSection.output_filename}`);
+    logger.info('');
+    logger.info('Next steps:');
+    logger.info('  • Review the generated section file');
+    logger.info('  • Run: npm run step2:section (to write another section)');
+    logger.info('  • Final combination: NOT implemented yet');
+
+    return result;
+
+  } catch (error) {
+    logger.error('Step 2 section generation failed');
+    logger.error(error instanceof Error ? error.message : 'Unknown error');
+
+    // Reset current_section on failure
+    if (selectedSection) {
+      const state = await readJSONFile<{ current_section: string }>('logs/workflow-state.json');
+      if (state) {
+        state.current_section = "";
+        await writeJSONFile('logs/workflow-state.json', state);
+      }
+    }
+
+    const result: Step2SectionRunResult = {
+      success: false,
+      checked_at: new Date().toISOString(),
+      provider: 'openai',
+      model: '',
+      base_url: '',
+      selected_section: selectedSection ? {
+        title: selectedSection.title,
+        level: selectedSection.level,
+        output_filename: selectedSection.output_filename
+      } : { title: '', level: 0, output_filename: '' },
+      output_file: '',
+      overwritten: false,
+      mock_used: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+
+    await writeJSONFile('logs/step2-section-run.json', result);
+    throw error;
+  }
+}
