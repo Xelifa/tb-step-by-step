@@ -111,3 +111,72 @@ async function readSectionGenerationInputFiles(): Promise<{
     tenderFileName: tenderFile
   };
 }
+
+/**
+ * Get completed sections from workflow state
+ */
+async function getCompletedSections(): Promise<string[]> {
+  const state = await readJSONFile<{ completed_sections: string[] }>('logs/workflow-state.json');
+  return state?.completed_sections || [];
+}
+
+/**
+ * Display interactive section selection
+ */
+async function selectSectionToWrite(outline: Outline): Promise<OutlineSection> {
+  logger.section('Select Section to Write');
+
+  const completedFilenames = await getCompletedSections();
+
+  // Filter out already completed sections
+  const availableSections = outline.sections.filter(section => {
+    const filename = section.output_filename;
+    return !completedFilenames.includes(filename);
+  });
+
+  if (availableSections.length === 0) {
+    throw new Error('All sections have been completed. No sections available to write.');
+  }
+
+  // Create display choices
+  const choices = availableSections.map(section => {
+    const indent = '  '.repeat(section.level - 1);
+    const prefix = section.needs_research ? '🔍 ' : '';
+    return {
+      name: `${indent}${prefix}${section.title}`,
+      value: section
+    };
+  });
+
+  const { selectedSection } = await inquirer.prompt<{ selectedSection: OutlineSection }>([{
+    type: 'list',
+    name: 'selectedSection',
+    message: 'Select a section to write:',
+    choices: choices
+  }]);
+
+  logger.success(`Selected: ${selectedSection.title}`);
+  return selectedSection;
+}
+
+/**
+ * Check if section file exists and handle duplicate protection
+ */
+async function checkDuplicateFile(outputFilename: string): Promise<boolean> {
+  const outputPath = path.join('output/sections', outputFilename);
+
+  if (!fs.existsSync(outputPath)) {
+    return false; // No duplicate, safe to proceed
+  }
+
+  logger.warn(`File already exists: ${outputPath}`);
+
+  const { overwrite } = await inquirer.prompt<{ overwrite: boolean }>([{
+    type: 'confirm',
+    name: 'overwrite',
+    message: 'This section file already exists. Overwrite it?',
+    default: false
+  }]);
+
+  return !overwrite; // Return true if should skip (user chose No)
+}
