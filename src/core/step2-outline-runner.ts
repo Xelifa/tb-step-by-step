@@ -91,6 +91,66 @@ async function readStep2OutlineInputFiles(): Promise<{
 }
 
 /**
+ * Validate and normalize outline structure
+ */
+function validateAndNormalizeOutline(rawOutline: any): Outline {
+  // Validate document_title
+  if (!rawOutline.document_title || typeof rawOutline.document_title !== 'string') {
+    throw new Error('Invalid outline: missing or invalid document_title');
+  }
+
+  // Validate sections
+  if (!Array.isArray(rawOutline.sections) || rawOutline.sections.length === 0) {
+    throw new Error('Invalid outline: sections must be a non-empty array');
+  }
+
+  // Validate each section
+  for (let i = 0; i < rawOutline.sections.length; i++) {
+    const section = rawOutline.sections[i];
+
+    if (typeof section.level !== 'number') {
+      throw new Error(`Invalid section ${i}: missing or invalid level`);
+    }
+    if (!section.title || typeof section.title !== 'string') {
+      throw new Error(`Invalid section ${i}: missing or invalid title`);
+    }
+    if (!section.writing_purpose || typeof section.writing_purpose !== 'string') {
+      throw new Error(`Invalid section ${i}: missing or invalid writing_purpose`);
+    }
+    if (!Array.isArray(section.key_points)) {
+      throw new Error(`Invalid section ${i}: missing or invalid key_points array`);
+    }
+    if (!section.source_basis || typeof section.source_basis !== 'string') {
+      throw new Error(`Invalid section ${i}: missing or invalid source_basis`);
+    }
+    if (typeof section.needs_research !== 'boolean') {
+      throw new Error(`Invalid section ${i}: missing or invalid needs_research`);
+    }
+    if (!section.output_filename || typeof section.output_filename !== 'string') {
+      throw new Error(`Invalid section ${i}: missing or invalid output_filename`);
+    }
+  }
+
+  // Normalize modules - ensure all 8 keys exist
+  const normalizedModules = {
+    background: Array.isArray(rawOutline.modules?.background) ? rawOutline.modules.background : [],
+    objectives: Array.isArray(rawOutline.modules?.objectives) ? rawOutline.modules.objectives : [],
+    content: Array.isArray(rawOutline.modules?.content) ? rawOutline.modules.content : [],
+    methods: Array.isArray(rawOutline.modules?.methods) ? rawOutline.modules.methods : [],
+    results: Array.isArray(rawOutline.modules?.results) ? rawOutline.modules.results : [],
+    challenges: Array.isArray(rawOutline.modules?.challenges) ? rawOutline.modules.challenges : [],
+    solutions: Array.isArray(rawOutline.modules?.solutions) ? rawOutline.modules.solutions : [],
+    suggestions: Array.isArray(rawOutline.modules?.suggestions) ? rawOutline.modules.suggestions : []
+  };
+
+  return {
+    document_title: rawOutline.document_title,
+    sections: rawOutline.sections,
+    modules: normalizedModules
+  };
+}
+
+/**
  * Call LLM API to generate structured outline
  * STRICT NO-MOCK POLICY: This must call real API
  * NO FALLBACK OUTLINE - if parsing fails, throw error
@@ -153,16 +213,17 @@ ${inputs.step3Instructions}
 - 相关的合理化建议
 
 输出格式为结构化 JSON，包含：
-- document_title: 总标题
-- sections: 章节数组，每项包含 level, title, writing_purpose, key_points[], source_basis, needs_research, output_filename
-- modules: 8 个模块的章节标题分组
+- document_title: 总标题（必须）
+- sections: 章节数组（必须），每项包含 level, title, writing_purpose, key_points[], source_basis, needs_research, output_filename
+- modules: 8 个模块的章节标题分组（必须），所有 8 个键必须存在：background, objectives, content, methods, results, challenges, solutions, suggestions，即使数组为空也必须包含
 
 注意：
 - 大纲必须符合三级目录要求
 - 严格对照招标文件和 new-prompt.md
 - 工作内容必须针对工作目标
 - 工作方法必须针对工作内容
-- 重点/难点与应对措施数量必须一一对应`;
+- 重点/难点与应对措施数量必须一一对应
+- modules 的 8 个键都是必须字段，不得省略`;
 
   logger.info(`Calling ${config.provider} API with model ${config.model}...`);
 
@@ -186,19 +247,10 @@ ${inputs.step3Instructions}
   }
 
   try {
-    const outline: Outline = JSON.parse(jsonStr);
+    const rawOutline = JSON.parse(jsonStr);
 
-    // Validate structure
-    if (!outline.document_title || !outline.sections || !outline.modules) {
-      throw new Error('Invalid outline structure: missing required fields');
-    }
-
-    // Validate sections have required fields
-    for (const section of outline.sections) {
-      if (typeof section.level !== 'number' || !section.title) {
-        throw new Error('Invalid section structure: missing level or title');
-      }
-    }
+    // Validate and normalize outline structure
+    const outline = validateAndNormalizeOutline(rawOutline);
 
     return outline;
   } catch (parseError) {
