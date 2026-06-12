@@ -110,6 +110,25 @@ export async function markStep2OutlineConfirmed(): Promise<void> {
   logger.success('Step 2 outline confirmed');
 }
 
+// Update state when a section starts being written
+export async function markSectionStarted(sectionTitle: string): Promise<void> {
+  const state = await loadWorkflowState();
+  state.current_section = sectionTitle;
+  await writeJSONFile(STATE_FILE, state);
+  logger.info(`Started writing section: ${sectionTitle}`);
+}
+
+// Update state when a section is completed
+export async function markSectionCompleted(outputFilename: string): Promise<void> {
+  const state = await loadWorkflowState();
+  state.current_section = "";
+  if (!state.completed_sections.includes(outputFilename)) {
+    state.completed_sections.push(outputFilename);
+  }
+  await writeJSONFile(STATE_FILE, state);
+  logger.success(`Completed section: ${outputFilename}`);
+}
+
 // Update state after successful test
 export async function markModelTestPassed(): Promise<void> {
   const state = await loadWorkflowState();
