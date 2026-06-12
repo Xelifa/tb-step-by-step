@@ -14,6 +14,8 @@
     "prestep1": "npm run build",
     "step2:outline": "node dist/commands/step2-outline.js",
     "prestep2:outline": "npm run build",
+    "step2:confirm": "node dist/commands/step2-confirm.js",
+    "prestep2:confirm": "npm run build",
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rimraf dist"
