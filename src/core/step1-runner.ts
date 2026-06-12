@@ -130,3 +130,200 @@ async function readStep1InputFiles(tenderFileName?: string): Promise<Step1InputF
     tenderFileName: tenderFile
   };
 }
+
+/**
+ * Call LLM API to generate adapted prompt
+ * STRICT NO-MOCK POLICY: This must call real API
+ */
+async function callLLMForAdaptation(
+  config: ModelConfig,
+  inputs: Step1InputFiles
+): Promise<AdaptedPrompt> {
+  logger.section('Calling LLM for Prompt Adaptation');
+
+  const apiKey = getEnvVar(config.api_key_env);
+  if (!apiKey) {
+    throw new Error(`API key not found: ${config.api_key_env}`);
+  }
+
+  const provider = getProvider(config.provider);
+
+  // Build prompt for adaptation
+  const adaptationPrompt = `你是一个专业的招投标 Prompt 适配专家。
+
+以下是输入材料：
+
+【旧 Prompt 模板】
+${inputs.oldPrompt}
+
+【新招标文件内容】
+${inputs.tenderContent}
+
+【适配规则（来自 step1.md）】
+${inputs.step1Instructions}
+
+【总规则（来自 SKILL.md）】
+${inputs.skill}
+
+请严格按照 step1.md 中定义的 Step 1 工作流执行旧 Prompt 适配任务。
+
+输出格式要求：
+1. A. 适配结论摘要（简洁说明核心结构保留、替换内容、新增内容、删除内容、总体逻辑）
+2. B. 旧 Prompt 适配诊断（按四类列出：保留项、替换项、新增项、删除项）
+3. C. 完整新 Prompt（结构完整、可直接使用）
+4. D. 关键替换点清单（清单形式）
+
+注意：
+- 遇到信息不足时必须使用 \`[需补充：XXX]\` 占位，不得编造
+- 保留旧 Prompt 的成熟结构和工作流机制
+- 严格对照新招标文件的评分标准`;
+
+  logger.info(`Calling ${config.provider} API with model ${config.model}...`);
+
+  // Call provider - this is the ONLY place API is called, no fallbacks
+  const response = await provider.callAPI(
+    config.base_url,
+    apiKey,
+    config.model,
+    adaptationPrompt,
+    config
+  );
+
+  logger.success('LLM API call completed');
+
+  // Parse response into structured AdaptedPrompt
+  // Note: We expect the LLM to follow the format, but we do basic parsing
+  const adapted: AdaptedPrompt = {
+    adaptation_summary: extractSection(response, 'A. 适配结论摘要') || '未能提取',
+    adaptation_diagnosis: {
+      preserved: extractListSection(response, '保留项') || [],
+      replaced: extractListSection(response, '替换项') || [],
+      added: extractListSection(response, '新增项') || [],
+      deleted: extractListSection(response, '删除项') || []
+    },
+    full_new_prompt: extractSection(response, 'C. 完整新 Prompt') || response,
+    key_replacements: extractListSection(response, '关键替换点') || []
+  };
+
+  return adapted;
+}
+
+// Helper functions for parsing LLM response
+function extractSection(text: string, sectionTitle: string): string | null {
+  const regex = new RegExp(`${sectionTitle}[\\s\\S]*?(?=(?:\\n[A-D]\\. |$))`, 'i');
+  const match = text.match(regex);
+  return match ? match[0].trim() : null;
+}
+
+function extractListSection(text: string, listTitle: string): string[] | null {
+  const regex = new RegExp(`${listTitle}[\\s\\S]*?(?=(?:\\n\\*\\*[1-4]|$))`, 'i');
+  const match = text.match(regex);
+  if (!match) return null;
+
+  const items = match[0]
+    .split('\n')
+    .filter(line => line.trim().startsWith('-') || line.trim().startsWith('•'))
+    .map(line => line.replace(/^[\s\-\•]+/, '').trim())
+    .filter(line => line.length > 0);
+
+  return items.length > 0 ? items : null;
+}
+
+/**
+ * Main Step 1 runner - orchestrates entire Step 1 workflow
+ */
+export async function runStep1(tenderFileName?: string): Promise<Step1RunResult> {
+  try {
+    // Load environment
+    await loadEnvFile();
+
+    // Step 1: Verify model gate passed
+    logger.section('Verifying Model Gate');
+    const gatePassed = await isModelGatePassed();
+
+    if (!gatePassed) {
+      throw new Error('Model gate has not passed. Please run: npm run config');
+    }
+    logger.success('Model gate verified ✓');
+
+    // Step 2: Load model configuration
+    const config = await readJSONFile<ModelConfig>('config/model.json');
+    if (!config) {
+      throw new Error('Model configuration not found. Please run: npm run config');
+    }
+
+    // Step 3: Run Step 1 model check (second verification)
+    const checkResult = await runStep1ModelCheck(config);
+
+    // Step 4: Read all input files
+    const inputs = await readStep1InputFiles(tenderFileName);
+
+    // Step 5: Call LLM API for adaptation
+    const adaptedPrompt = await callLLMForAdaptation(config, inputs);
+
+    // Step 6: Save outputs
+    logger.section('Saving Outputs');
+
+    // Save new-prompt.md
+    await writeTextFile('output/new-prompt.md', adaptedPrompt.full_new_prompt);
+    logger.success('Saved output/new-prompt.md');
+
+    // Step 7: Create run log
+    const runResult: Step1RunResult = {
+      success: true,
+      checked_at: new Date().toISOString(),
+      provider: config.provider,
+      model: config.model,
+      base_url: config.base_url,
+      tender_file: inputs.tenderFileName,
+      skill_loaded: true,
+      old_prompt_loaded: true,
+      step1_instructions_loaded: true,
+      tender_loaded: true,
+      model_check_passed: true,
+      adapted_prompt: adaptedPrompt,
+      mock_used: false
+    };
+
+    await writeJSONFile('logs/step1-run.json', runResult);
+    logger.success('Saved logs/step1-run.json');
+
+    // Step 8: Update workflow state
+    await markStep1Completed(inputs.tenderFileName);
+
+    logger.section('Step 1 Completed');
+    logger.info('');
+    logger.info('Adaptation Summary:');
+    logger.info(adaptedPrompt.adaptation_summary);
+    logger.info('');
+    logger.success('Step 1 workflow completed successfully ✓');
+    logger.info('');
+    logger.info('Next step: Review output/new-prompt.md');
+    logger.info('When ready, run: npm run step2 (not implemented yet)');
+
+    return runResult;
+
+  } catch (error) {
+    logger.error('Step 1 failed');
+    logger.error(error instanceof Error ? error.message : 'Unknown error');
+
+    const runResult: Step1RunResult = {
+      success: false,
+      checked_at: new Date().toISOString(),
+      provider: 'openai',  // Placeholder, will be overwritten if config exists
+      model: '',
+      base_url: '',
+      tender_file: tenderFileName || 'unknown',
+      skill_loaded: false,
+      old_prompt_loaded: false,
+      step1_instructions_loaded: false,
+      tender_loaded: false,
+      model_check_passed: false,
+      mock_used: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+
+    await writeJSONFile('logs/step1-run.json', runResult);
+    throw error;
+  }
+}

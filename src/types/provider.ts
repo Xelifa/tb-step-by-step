@@ -7,6 +7,15 @@ export interface IProvider {
 
   // Execute a real API call with given prompt
   call(prompt: string, config: ModelConfig): Promise<string>;
+
+  // Call API with explicit parameters (for Step 1 runner)
+  callAPI(
+    baseUrl: string,
+    apiKey: string,
+    model: string,
+    prompt: string,
+    config: ModelConfig
+  ): Promise<string>;
 }
 
 // Result from centralized tester

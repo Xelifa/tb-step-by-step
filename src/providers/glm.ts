@@ -22,4 +22,14 @@ export class GLMProvider implements IProvider {
       config
     );
   }
+
+  async callAPI(
+    baseUrl: string,
+    apiKey: string,
+    model: string,
+    prompt: string,
+    config: ModelConfig
+  ): Promise<string> {
+    return await callOpenAICompatible(baseUrl, '/chat/completions', apiKey, prompt, config);
+  }
 }
