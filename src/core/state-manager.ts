@@ -2,6 +2,7 @@ import { WorkflowState, INITIAL_WORKFLOW_STATE } from '../types/state';
 import { ModelConfig } from '../types/config';
 import { ProviderTestResult } from '../types/provider';
 import { readJSONFile, writeJSONFile, fileExists } from '../utils/file';
+import { logger } from '../utils/logger';
 
 const STATE_FILE = 'logs/workflow-state.json';
 
@@ -62,6 +63,26 @@ export async function markModelConfigured(): Promise<void> {
   state.new_prompt_generated = false;
 
   await saveWorkflowState(state);
+}
+
+// Update state after Step 1 model check passed
+export async function markStep1CheckPassed(): Promise<void> {
+  const state = await loadWorkflowState();
+  state.step1_model_check_passed = true;
+  await saveWorkflowState(state);
+  logger.success('Step 1 model check passed');
+}
+
+// Update state after Step 1 workflow completed
+export async function markStep1Completed(tenderFile: string): Promise<void> {
+  const state = await loadWorkflowState();
+  state.skill_loaded = true;
+  state.old_prompt_loaded = true;
+  state.tender_file_loaded = true;
+  state.new_prompt_generated = true;
+  // Note: We don't set tender_file name in state, but log it in step1-run.json
+  await saveWorkflowState(state);
+  logger.success('Step 1 workflow completed');
 }
 
 // Update state after successful test
