@@ -98,6 +98,18 @@ export async function markStep2OutlineGenerated(): Promise<void> {
   logger.success('Step 2 outline generated');
 }
 
+// Update state after Step 2 outline confirmed by user
+export async function markStep2OutlineConfirmed(): Promise<void> {
+  const state = await loadWorkflowState();
+  state.step2_confirmed = true;
+  state.outline_confirmed = true;
+  state.current_section = "";
+  state.completed_sections = [];
+  state.final_combined = false;
+  await writeJSONFile(STATE_FILE, state);
+  logger.success('Step 2 outline confirmed');
+}
+
 // Update state after successful test
 export async function markModelTestPassed(): Promise<void> {
   const state = await loadWorkflowState();
