@@ -180,3 +180,100 @@ async function checkDuplicateFile(outputFilename: string): Promise<boolean> {
 
   return !overwrite; // Return true if should skip (user chose No)
 }
+
+/**
+ * Build prompt for section generation
+ */
+function buildSectionPrompt(section: OutlineSection, inputs: {
+  newPrompt: string;
+  tenderContent: string;
+  step2Instructions: string;
+  step3Instructions: string;
+}): string {
+  const researchPlaceholder = section.needs_research
+    ? '\n\n注意：此章节大纲标记为需要联网检索。请在文中需要补充最新政策、案例或官方表述处插入：\n[需补充联网检索：相关最新政策、案例或官方表述]'
+    : '';
+
+  return `你是一个专业的招投标文件撰写专家。
+
+请根据以下材料撰写指定章节。
+
+【章节信息】
+章节标题：${section.title}
+章节层级：${section.level}
+写作目的：${section.writing_purpose}
+关键内容点：${section.key_points.join('、')}
+源依据：${section.source_basis}
+
+【适配后的新 Prompt】
+${inputs.newPrompt}
+
+【招标文件内容】
+${inputs.tenderContent}
+
+【Step 2 分段撰写规则】
+${inputs.step2Instructions}
+
+【Step 3 执行模式规则】
+${inputs.step3Instructions}
+
+【写作要求】
+1. 严格遵循 new-prompt.md 的指导
+2. 忠实于招标文件内容，不得编造
+3. 遇信息缺失时使用 \`[需补充：XXX]\` 占位
+4. 按大纲要求完整撰写本章节内容
+5. 逻辑清晰、语言专业、表达准确${researchPlaceholder}
+
+请输出完整的章节正文内容（不要包含章节标题，直接开始正文）：`;
+}
+
+/**
+ * Call LLM API to generate section content
+ * STRICT NO-MOCK POLICY: This must call real API
+ */
+async function callLLMForSection(
+  config: ModelConfig,
+  section: OutlineSection,
+  inputs: {
+    newPrompt: string;
+    tenderContent: string;
+    step2Instructions: string;
+    step3Instructions: string;
+  }
+): Promise<string> {
+  logger.section('Generating Section Content');
+
+  const apiKey = getEnvVar(config.api_key_env);
+  if (!apiKey) {
+    throw new Error(`API key not found: ${config.api_key_env}`);
+  }
+
+  const provider = getProvider(config.provider);
+  const prompt = buildSectionPrompt(section, inputs);
+
+  logger.info(`Calling ${config.provider} API with model ${config.model}...`);
+  logger.info(`Section: ${section.title}`);
+
+  // Call provider - this is the ONLY place API is called, no fallbacks
+  const response = await provider.callAPI(
+    config.base_url,
+    apiKey,
+    config.model,
+    prompt,
+    config
+  );
+
+  logger.success('Section generation completed');
+  return response;
+}
+
+/**
+ * Ensure output/sections directory exists
+ */
+function ensureSectionsDirectory(): void {
+  const sectionsDir = 'output/sections';
+  if (!fs.existsSync(sectionsDir)) {
+    fs.mkdirSync(sectionsDir, { recursive: true });
+    logger.info('Created output/sections directory');
+  }
+}
