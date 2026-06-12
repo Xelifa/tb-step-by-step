@@ -1,0 +1,85 @@
+import { WorkflowState, INITIAL_WORKFLOW_STATE } from '../types/state';
+import { ModelConfig } from '../types/config';
+import { ProviderTestResult } from '../types/provider';
+import { readJSONFile, writeJSONFile, fileExists } from '../utils/file';
+
+const STATE_FILE = 'logs/workflow-state.json';
+
+// Load current workflow state
+export async function loadWorkflowState(): Promise<WorkflowState> {
+  const state = await readJSONFile<WorkflowState>(STATE_FILE);
+  return state || INITIAL_WORKFLOW_STATE;
+}
+
+// Save workflow state
+export async function saveWorkflowState(
+  state: WorkflowState
+): Promise<void> {
+  await writeJSONFile(STATE_FILE, state);
+}
+
+// Check if model gate has passed
+export async function isModelGatePassed(): Promise<boolean> {
+  try {
+    // Check config/model.json exists
+    const config = await readJSONFile<ModelConfig>('config/model.json');
+    if (!config) return false;
+
+    // Check workflow state flags
+    const state = await loadWorkflowState();
+    if (!state.model_configured || !state.model_test_passed) {
+      return false;
+    }
+
+    // Check test result exists and passed
+    const testResult = await readJSONFile<ProviderTestResult>('logs/model-test.json');
+    if (!testResult) return false;
+
+    // Verify all success criteria
+    if (!testResult.success) return false;
+    if (testResult.mock_used !== false) return false;
+    if (testResult.response_validation_passed !== true) return false;
+
+    // Verify test matches current config
+    if (testResult.provider !== config.provider) return false;
+    if (testResult.model !== config.model) return false;
+    if (testResult.base_url !== config.base_url) return false;
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Update state after successful configuration
+export async function markModelConfigured(): Promise<void> {
+  const state = await loadWorkflowState();
+
+  // Reset downstream flags when config changes
+  state.model_configured = true;
+  state.model_test_passed = false;
+  state.step1_model_check_passed = false;
+  state.new_prompt_generated = false;
+
+  await saveWorkflowState(state);
+}
+
+// Update state after successful test
+export async function markModelTestPassed(): Promise<void> {
+  const state = await loadWorkflowState();
+  state.model_configured = true;
+  state.model_test_passed = true;
+  await saveWorkflowState(state);
+}
+
+// Update state after failed test
+export async function markModelTestFailed(): Promise<void> {
+  const state = await loadWorkflowState();
+
+  // Check if config exists without throwing on invalid JSON
+  const configExists = await fileExists('config/model.json');
+  state.model_configured = configExists;
+  state.model_test_passed = false;
+
+  await saveWorkflowState(state);
+}
