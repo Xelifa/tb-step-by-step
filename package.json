@@ -14,12 +14,18 @@
     "dev": "tsc --watch",
     "clean": "rimraf dist"
   },
-  "keywords": ["bidding", "workflow", "llm", "ai"],
+  "keywords": [
+    "bidding",
+    "workflow",
+    "llm",
+    "ai"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "dotenv": "^16.4.0",
-    "inquirer": "^8.2.6"
+    "inquirer": "^8.2.6",
+    "mammoth": "^1.12.0"
   },
   "devDependencies": {
     "@types/inquirer": "^8.2.0",
