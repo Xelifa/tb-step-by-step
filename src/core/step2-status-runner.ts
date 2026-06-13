@@ -202,10 +202,10 @@ function displayStatusReport(
  */
 export async function runStep2Status(): Promise<Step2StatusRunResult> {
   try {
-    // Load environment
+    // Step 1: Load environment
     await loadEnvFile();
 
-    // Step 1: Verify model gate passed
+    // Step 2: Verify model gate passed
     logger.section('Verifying Model Gate');
     const gatePassed = await isModelGatePassed();
 
@@ -214,7 +214,7 @@ export async function runStep2Status(): Promise<Step2StatusRunResult> {
     }
     logger.success('Model gate verified ✓');
 
-    // Step 2: Verify Step 1 completed
+    // Step 3: Verify Step 1 completed
     logger.section('Verifying Step 1 Completion');
     const step1State = await readJSONFile<{ new_prompt_generated: boolean }>('logs/workflow-state.json');
     if (!step1State || !step1State.new_prompt_generated) {
@@ -222,7 +222,7 @@ export async function runStep2Status(): Promise<Step2StatusRunResult> {
     }
     logger.success('Step 1 completion verified ✓');
 
-    // Step 3: Verify Step 2 outline generated
+    // Step 4: Verify Step 2 outline generated
     logger.section('Verifying Step 2 Outline Generation');
     const step2State = await readJSONFile<{ outline_generated: boolean }>('logs/workflow-state.json');
     if (!step2State || !step2State.outline_generated) {
@@ -230,23 +230,23 @@ export async function runStep2Status(): Promise<Step2StatusRunResult> {
     }
     logger.success('Step 2 outline generation verified ✓');
 
-    // Step 4: Verify Step 2 outline confirmed
+    // Step 5: Verify Step 2 outline confirmed
     await verifyStep2OutlineConfirmed();
 
-    // Step 5: Read files
+    // Step 6: Read files
     const { workflowState, outline } = await readStatusCheckFiles();
 
-    // Step 6: Get generated files
+    // Step 7: Get generated files
     const generatedFiles = getGeneratedSectionFiles();
 
-    // Step 7: Analyze status
+    // Step 8: Analyze status
     const { sections, warnings } = analyzeSectionStatus(
       outline,
       workflowState.completed_sections,
       generatedFiles
     );
 
-    // Step 8: Calculate counts
+    // Step 9: Calculate counts
     const totalSections = sections.length;
     const completedSections = sections.filter(s => s.completed).map(s => s.title);
     const remainingSections = sections.filter(s => !s.completed).map(s => s.title);
@@ -254,7 +254,7 @@ export async function runStep2Status(): Promise<Step2StatusRunResult> {
     const remainingCount = remainingSections.length;
     const currentSection = workflowState.current_section || '';
 
-    // Step 9: Display report
+    // Step 10: Display report
     displayStatusReport(
       totalSections,
       completedCount,
@@ -266,7 +266,7 @@ export async function runStep2Status(): Promise<Step2StatusRunResult> {
       warnings
     );
 
-    // Step 10: Create run log
+    // Step 11: Create run log
     const result: Step2StatusRunResult = {
       success: true,
       checked_at: new Date().toISOString(),
@@ -284,6 +284,7 @@ export async function runStep2Status(): Promise<Step2StatusRunResult> {
     await writeJSONFile('logs/step2-status-run.json', result);
     logger.success('Saved logs/step2-status-run.json');
 
+    // Step 12: Return result
     return result;
 
   } catch (error) {
