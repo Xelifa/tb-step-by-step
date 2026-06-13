@@ -196,3 +196,116 @@ function displayStatusReport(
     logger.info('  • All sections completed. Final combination is not implemented yet.');
   }
 }
+
+/**
+ * Main Step 2 status runner
+ */
+export async function runStep2Status(): Promise<Step2StatusRunResult> {
+  try {
+    // Load environment
+    await loadEnvFile();
+
+    // Step 1: Verify model gate passed
+    logger.section('Verifying Model Gate');
+    const gatePassed = await isModelGatePassed();
+
+    if (!gatePassed) {
+      throw new Error('Model gate has not passed. Please run: npm run config');
+    }
+    logger.success('Model gate verified ✓');
+
+    // Step 2: Verify Step 1 completed
+    logger.section('Verifying Step 1 Completion');
+    const step1State = await readJSONFile<{ new_prompt_generated: boolean }>('logs/workflow-state.json');
+    if (!step1State || !step1State.new_prompt_generated) {
+      throw new Error('Step 1 has not completed. Please run: npm run step1');
+    }
+    logger.success('Step 1 completion verified ✓');
+
+    // Step 3: Verify Step 2 outline generated
+    logger.section('Verifying Step 2 Outline Generation');
+    const step2State = await readJSONFile<{ outline_generated: boolean }>('logs/workflow-state.json');
+    if (!step2State || !step2State.outline_generated) {
+      throw new Error('Step 2 outline has not been generated. Please run: npm run step2:outline');
+    }
+    logger.success('Step 2 outline generation verified ✓');
+
+    // Step 4: Verify Step 2 outline confirmed
+    await verifyStep2OutlineConfirmed();
+
+    // Step 5: Read files
+    const { workflowState, outline } = await readStatusCheckFiles();
+
+    // Step 6: Get generated files
+    const generatedFiles = getGeneratedSectionFiles();
+
+    // Step 7: Analyze status
+    const { sections, warnings } = analyzeSectionStatus(
+      outline,
+      workflowState.completed_sections,
+      generatedFiles
+    );
+
+    // Step 8: Calculate counts
+    const totalSections = sections.length;
+    const completedSections = sections.filter(s => s.completed).map(s => s.title);
+    const remainingSections = sections.filter(s => !s.completed).map(s => s.title);
+    const completedCount = completedSections.length;
+    const remainingCount = remainingSections.length;
+    const currentSection = workflowState.current_section || '';
+
+    // Step 9: Display report
+    displayStatusReport(
+      totalSections,
+      completedCount,
+      remainingCount,
+      currentSection,
+      completedSections,
+      remainingSections,
+      generatedFiles,
+      warnings
+    );
+
+    // Step 10: Create run log
+    const result: Step2StatusRunResult = {
+      success: true,
+      checked_at: new Date().toISOString(),
+      total_sections: totalSections,
+      completed_count: completedCount,
+      remaining_count: remainingCount,
+      current_section: currentSection,
+      completed_sections: completedSections,
+      remaining_sections: remainingSections,
+      generated_files: generatedFiles,
+      warnings,
+      mock_used: false
+    };
+
+    await writeJSONFile('logs/step2-status-run.json', result);
+    logger.success('Saved logs/step2-status-run.json');
+
+    return result;
+
+  } catch (error) {
+    logger.error('Step 2 status check failed');
+    logger.error(error instanceof Error ? error.message : 'Unknown error');
+
+    const result: Step2StatusRunResult = {
+      success: false,
+      checked_at: new Date().toISOString(),
+      total_sections: 0,
+      completed_count: 0,
+      remaining_count: 0,
+      current_section: '',
+      completed_sections: [],
+      remaining_sections: [],
+      generated_files: [],
+      warnings: [],
+      mock_used: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+
+    await writeJSONFile('logs/step2-status-run.json', result);
+    throw error;
+  }
+}
