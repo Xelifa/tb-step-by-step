@@ -22,6 +22,8 @@
     "prestep2:status": "npm run build",
     "final:combine": "node dist/commands/final-combine.js",
     "prefinal:combine": "npm run build",
+    "workflow": "node dist/commands/workflow.js",
+    "preworkflow": "npm run build",
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rimraf dist"
