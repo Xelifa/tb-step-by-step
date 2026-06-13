@@ -126,3 +126,79 @@ async function promptPartialCombine(missingSections: string[]): Promise<boolean>
 
   return proceed;
 }
+
+/**
+ * Generate table of contents from outline
+ */
+function generateTableOfContents(outline: Outline): string {
+  let toc = '## 目录\n\n';
+
+  for (const section of outline.sections) {
+    const indent = '  '.repeat(section.level - 1);
+    const prefix = section.level === 1 ? '- ' : '  - ';
+    toc += `${indent}${prefix}${section.title}\n`;
+  }
+
+  return toc;
+}
+
+/**
+ * Combine sections into final document
+ */
+function combineSections(
+  outline: Outline,
+  generatedFiles: string[],
+  partial: boolean
+): string {
+  let content = '';
+
+  for (const section of outline.sections) {
+    const filename = section.output_filename;
+    const hasFile = generatedFiles.includes(filename);
+
+    if (hasFile) {
+      // Read and append section content
+      const sectionContent = readSectionFile(filename);
+      content += sectionContent + '\n\n';
+    } else if (partial) {
+      // Add placeholder for missing section
+      content += `## ${section.title}\n\n`;
+      content += `[未生成：该章节尚未通过 npm run step2:section 生成]\n\n`;
+    }
+  }
+
+  return content;
+}
+
+/**
+ * Generate final combined document
+ */
+function generateFinalDocument(
+  outline: Outline,
+  generatedFiles: string[],
+  combinedCount: number,
+  totalCount: number,
+  partial: boolean
+): string {
+  const timestamp = new Date().toISOString();
+
+  let document = '';
+
+  // Document title
+  document += `# ${outline.document_title}\n\n`;
+
+  // Generation metadata
+  document += `**生成时间:** ${timestamp}\n\n`;
+  document += `**组合状态:** ${partial ? '部分组合' : '完整组合'} (${combinedCount}/${totalCount} 章节)\n\n`;
+
+  // Table of contents
+  document += generateTableOfContents(outline) + '\n\n';
+
+  // Divider
+  document += '---\n\n';
+
+  // Combined sections
+  document += combineSections(outline, generatedFiles, partial);
+
+  return document;
+}
