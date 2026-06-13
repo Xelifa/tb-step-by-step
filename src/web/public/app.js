@@ -107,8 +107,8 @@ async function loadStatus() {
 
   // Show/hide Step 1 button based on status
   const modelGatePassed = data.summary.model_gate === 'completed';
-  const hasTenderFile = data.summary.step1_new_prompt !== 'completed' && data.state.model_test_passed;
   const step1NotComplete = data.summary.step1_new_prompt === 'pending';
+  const hasTenderFile = data.state.tender_file_loaded || data.summary.step1_new_prompt === 'completed';
 
   runStep1Button.style.display = modelGatePassed && hasTenderFile && step1NotComplete ? 'inline-block' : 'none';
 
