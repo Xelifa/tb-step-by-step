@@ -20,11 +20,66 @@
           <strong id="current-step" class="summary-value">加载中...</strong>
           <p class="summary-label">Next command</p>
           <code id="next-command" class="summary-command">加载中...</code>
-          <p class="helper-text">如果模型尚未重新配置，请先在终端运行 <code>npm run config</code>。</p>
+          <p class="helper-text">如果模型尚未重新配置，请先在终端运行 <code>npm run config</code>，或直接在下方完成配置。</p>
         </aside>
       </header>
 
       <div class="content-grid">
+        <section class="surface model-config-panel">
+          <div class="section-heading stacked">
+            <div>
+              <p class="section-kicker">Model Gate</p>
+              <h2>Configure Model API</h2>
+            </div>
+            <p class="section-copy">在浏览器中直接保存模型配置并执行真实连通性测试。API Key 仅在点击保存时发送到本地后端，不会回显或展示。</p>
+          </div>
+          <div class="model-config-status" id="model-config-status">正在读取当前配置状态...</div>
+          <form id="model-config-form" class="model-config-form">
+            <label class="form-field">
+              <span class="field-label">Provider</span>
+              <select id="model-provider" name="provider" required>
+                <option value="openai">openai</option>
+                <option value="deepseek">deepseek</option>
+                <option value="glm">glm</option>
+                <option value="claude-compatible">claude-compatible</option>
+                <option value="custom">custom</option>
+              </select>
+            </label>
+            <label class="form-field">
+              <span class="field-label">Base URL</span>
+              <input id="model-base-url" name="base_url" type="url" required>
+            </label>
+            <label class="form-field">
+              <span class="field-label">Model</span>
+              <input id="model-name" name="model" type="text" required>
+            </label>
+            <label class="form-field">
+              <span class="field-label">API Key Env Var</span>
+              <input id="model-api-key-env" name="api_key_env" type="text" required>
+            </label>
+            <label class="form-field">
+              <span class="field-label">API Key Value</span>
+              <input id="model-api-key-value" name="api_key_value" type="password" autocomplete="new-password" placeholder="仅保存时发送，不会显示已保存内容">
+            </label>
+            <label class="form-field">
+              <span class="field-label">Temperature</span>
+              <input id="model-temperature" name="temperature" type="number" min="0" max="2" step="0.1" required>
+            </label>
+            <label class="form-field">
+              <span class="field-label">Max Tokens</span>
+              <input id="model-max-tokens" name="max_tokens" type="number" min="1" step="1" required>
+            </label>
+            <label class="form-field">
+              <span class="field-label">Timeout Seconds</span>
+              <input id="model-timeout-seconds" name="timeout_seconds" type="number" min="1" step="1" required>
+            </label>
+            <div class="model-config-actions">
+              <button id="model-save-test" type="submit">Save &amp; Test</button>
+              <p id="model-config-result" class="inline-result">保存后将自动执行真实模型测试。</p>
+            </div>
+          </form>
+        </section>
+
         <section class="surface status-panel">
           <div class="section-heading">
             <div>

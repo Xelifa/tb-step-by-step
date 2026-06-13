@@ -1,27 +1,17 @@
 import inquirer from 'inquirer';
 import { ProviderType, ModelConfig, ConfigInput } from '../types/config';
-import { getSupportedProviders } from './provider';
-import { upsertEnvVar, loadEnvFile, hasEnvVar } from '../utils/env';
-import { writeJSONFile } from '../utils/file';
+import { loadEnvFile, hasEnvVar } from '../utils/env';
 import { logger } from '../utils/logger';
+import {
+  ENV_VAR_NAMES,
+  getModelProviderDefaults,
+  getModelProviderOptions,
+  saveAndTestModelConfiguration,
+  persistModelConfiguration
+} from './model-config-service';
 
-// Provider defaults (used during configuration)
-const PROVIDER_DEFAULTS: Record<ProviderType, { base_url: string; suggested_model: string }> = {
-  'openai': { base_url: 'https://api.openai.com/v1', suggested_model: 'gpt-4o' },
-  'deepseek': { base_url: 'https://api.deepseek.com/v1', suggested_model: 'deepseek-chat' },
-  'glm': { base_url: 'https://open.bigmodel.cn/api/paas/v4', suggested_model: 'glm-4-plus' },
-  'claude-compatible': { base_url: 'https://api.anthropic.com', suggested_model: 'claude-3-5-sonnet-latest' },
-  'custom': { base_url: '', suggested_model: '' }
-};
-
-// Provider to env var name mapping
-const ENV_VAR_NAMES: Record<ProviderType, string> = {
-  'openai': 'OPENAI_API_KEY',
-  'deepseek': 'DEEPSEEK_API_KEY',
-  'glm': 'GLM_API_KEY',
-  'claude-compatible': 'CLAUDE_API_KEY',
-  'custom': 'CUSTOM_API_KEY'
-};
+const PROVIDER_DEFAULTS = getModelProviderDefaults();
+const PROVIDER_OPTIONS = getModelProviderOptions();
 
 export async function collectConfiguration(): Promise<ConfigInput> {
   logger.section('Model Configuration Setup');
@@ -31,7 +21,7 @@ export async function collectConfiguration(): Promise<ConfigInput> {
     type: 'list',
     name: 'provider',
     message: 'Select model provider:',
-    choices: getSupportedProviders()
+    choices: PROVIDER_OPTIONS
   }]);
 
   // Step 2: Enter Base URL
@@ -174,36 +164,7 @@ export async function collectConfiguration(): Promise<ConfigInput> {
 export async function saveConfiguration(
   input: ConfigInput
 ): Promise<ModelConfig> {
-  // Build ModelConfig (without api_key_value)
-  const config: ModelConfig = {
-    provider: input.provider,
-    base_url: input.base_url,
-    api_key_env: input.api_key_env,
-    model: input.model,
-    temperature: input.temperature,
-    max_tokens: input.max_tokens,
-    timeout_seconds: input.timeout_seconds,
-    stream: false
-  };
-
-  // Save to config/model.json
-  await writeJSONFile('config/model.json', config);
-  logger.success('Saved config/model.json');
-
-  // Mark model as configured (invalidates downstream state)
-  const { markModelConfigured } = await import('./state-manager');
-  await markModelConfigured();
-
-  // Upsert to .env if api_key_value provided
-  if (input.api_key_value) {
-    await upsertEnvVar(input.api_key_env, input.api_key_value);
-    logger.success(`Saved API key to .env as ${input.api_key_env}`);
-
-    // Update process.env so immediate test works
-    process.env[input.api_key_env] = input.api_key_value;
-  }
-
-  return config;
+  return await persistModelConfiguration(input);
 }
 
 export async function runConfigurationFlow(): Promise<void> {
@@ -214,17 +175,15 @@ export async function runConfigurationFlow(): Promise<void> {
   const input = await collectConfiguration();
 
   // Save configuration
-  const config = await saveConfiguration(input);
-
-  // Run connection test
-  const { runModelGateTest } = await import('./model-gate');
-  const result = await runModelGateTest(config);
+  const result = await saveAndTestModelConfiguration(input);
 
   if (!result.success) {
     logger.info('Please reconfigure: npm run config');
     throw new Error('Model test failed');
   }
 
+  logger.success('Saved config/model.json');
+  logger.success(`Saved API key to .env as ${result.api_key_env}`);
   logger.success('Model configuration complete ✓');
   logger.info('You can now proceed with the workflow');
 }

@@ -5,6 +5,10 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import { INITIAL_WORKFLOW_STATE, WorkflowState } from '../types/state';
+import {
+  getSanitizedModelConfigStatus,
+  saveAndTestModelConfiguration
+} from '../core/model-config-service';
 
 const execFileAsync = promisify(execFile);
 const app = express();
@@ -264,12 +268,8 @@ async function getStatusSnapshot(): Promise<{
     currentStep = 'Configure Model API';
     nextRecommendedCommand = 'npm run config';
     nextRecommendedLabel = 'npm run config';
-  } else if (!hasTenderFile) {
-    currentStep = 'Upload Tender .docx';
-    nextRecommendedCommand = 'Upload tender .docx';
-    nextRecommendedLabel = 'Upload tender .docx';
   } else if (!step1Generated) {
-    currentStep = 'Run Step 1';
+    currentStep = hasTenderFile ? 'Run Step 1' : 'Upload Tender .docx';
     nextRecommendedCommand = 'npm run step1';
     nextRecommendedLabel = 'npm run step1';
   } else if (!outlineGenerated) {
@@ -336,6 +336,37 @@ app.get('/api/status', async (_request: Request, response: Response) => {
     response.json(await getStatusSnapshot());
   } catch (error) {
     response.status(500).json({ error: error instanceof Error ? error.message : 'Unable to read status' });
+  }
+});
+
+app.get('/api/model-config/status', async (_request: Request, response: Response) => {
+  try {
+    response.json(await getSanitizedModelConfigStatus());
+  } catch (error) {
+    response.status(500).json({ error: error instanceof Error ? error.message : 'Unable to read model config status' });
+  }
+});
+
+app.post('/api/model-config/save-and-test', async (request: Request, response: Response) => {
+  try {
+    const result = await saveAndTestModelConfiguration({
+      provider: String(request.body?.provider ?? ''),
+      base_url: String(request.body?.base_url ?? ''),
+      api_key_env: String(request.body?.api_key_env ?? ''),
+      api_key_value: typeof request.body?.api_key_value === 'string'
+        ? request.body.api_key_value
+        : '',
+      model: String(request.body?.model ?? ''),
+      temperature: Number(request.body?.temperature),
+      max_tokens: Number(request.body?.max_tokens),
+      timeout_seconds: Number(request.body?.timeout_seconds)
+    });
+
+    response.json(result);
+  } catch (error) {
+    response.status(400).json({
+      error: error instanceof Error ? error.message : 'Unable to save and test model configuration'
+    });
   }
 });
 

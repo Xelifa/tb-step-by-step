@@ -6,6 +6,46 @@ const uploadResult = document.querySelector('#upload-result');
 const resetResult = document.querySelector('#reset-result');
 const viewer = document.querySelector('#viewer');
 const viewerTitle = document.querySelector('#viewer-title');
+const modelConfigStatus = document.querySelector('#model-config-status');
+const modelConfigResult = document.querySelector('#model-config-result');
+const modelConfigForm = document.querySelector('#model-config-form');
+const modelSaveTestButton = document.querySelector('#model-save-test');
+const modelProviderInput = document.querySelector('#model-provider');
+const modelBaseUrlInput = document.querySelector('#model-base-url');
+const modelNameInput = document.querySelector('#model-name');
+const modelApiKeyEnvInput = document.querySelector('#model-api-key-env');
+const modelApiKeyValueInput = document.querySelector('#model-api-key-value');
+const modelTemperatureInput = document.querySelector('#model-temperature');
+const modelMaxTokensInput = document.querySelector('#model-max-tokens');
+const modelTimeoutSecondsInput = document.querySelector('#model-timeout-seconds');
+
+const providerDefaults = {
+  openai: {
+    base_url: 'https://api.openai.com/v1',
+    model: 'gpt-4o',
+    api_key_env: 'OPENAI_API_KEY'
+  },
+  deepseek: {
+    base_url: 'https://api.deepseek.com',
+    model: 'deepseek-chat',
+    api_key_env: 'DEEPSEEK_API_KEY'
+  },
+  glm: {
+    base_url: 'https://open.bigmodel.cn/api/paas/v4',
+    model: 'glm-4-plus',
+    api_key_env: 'GLM_API_KEY'
+  },
+  'claude-compatible': {
+    base_url: 'https://api.anthropic.com',
+    model: 'claude-3-5-sonnet-latest',
+    api_key_env: 'CLAUDE_API_KEY'
+  },
+  custom: {
+    base_url: '',
+    model: '',
+    api_key_env: 'CUSTOM_API_KEY'
+  }
+};
 
 async function request(url, options) {
   const response = await fetch(url, options);
@@ -53,6 +93,44 @@ async function loadStatus() {
   nextCommand.textContent = data.next_recommended_label;
 }
 
+function applyProviderDefaults(provider) {
+  const defaults = providerDefaults[provider];
+  if (!defaults) {
+    return;
+  }
+
+  modelBaseUrlInput.value = defaults.base_url;
+  modelNameInput.value = defaults.model;
+  modelApiKeyEnvInput.value = defaults.api_key_env;
+}
+
+function updateModelConfigStatusText(data) {
+  if (!data.configured) {
+    modelConfigStatus.textContent = '当前尚未保存模型配置。可直接在此填写并测试真实模型连接。';
+    return;
+  }
+
+  const statusText = data.model_test_passed ? '已通过真实模型测试' : '已保存但尚未通过模型测试';
+  const keyText = data.has_api_key ? '已检测到 API Key' : '尚未检测到 API Key';
+  modelConfigStatus.textContent = `${data.provider} / ${data.model} / ${statusText} / ${keyText}`;
+}
+
+async function loadModelConfigStatus() {
+  const data = await request('/api/model-config/status');
+  const defaults = providerDefaults[data.provider] || providerDefaults.deepseek;
+
+  modelProviderInput.value = data.provider || 'deepseek';
+  modelBaseUrlInput.value = data.base_url || defaults.base_url;
+  modelNameInput.value = data.model || defaults.model;
+  modelApiKeyEnvInput.value = data.api_key_env || defaults.api_key_env;
+  modelTemperatureInput.value = String(data.temperature ?? '0.2');
+  modelMaxTokensInput.value = String(data.max_tokens ?? '6000');
+  modelTimeoutSecondsInput.value = String(data.timeout_seconds ?? '120');
+  modelApiKeyValueInput.value = '';
+
+  updateModelConfigStatusText(data);
+}
+
 function addFileButtons(containerId, files, kind) {
   const container = document.querySelector(containerId);
   container.replaceChildren();
@@ -91,6 +169,44 @@ async function loadFiles() {
 
 document.querySelector('#refresh-status').addEventListener('click', () => loadStatus().catch(showError));
 
+modelProviderInput.addEventListener('change', event => {
+  applyProviderDefaults(event.currentTarget.value);
+});
+
+modelConfigForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  modelSaveTestButton.disabled = true;
+  modelConfigResult.textContent = 'Testing model connection...';
+
+  try {
+    const data = await request('/api/model-config/save-and-test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider: modelProviderInput.value,
+        base_url: modelBaseUrlInput.value,
+        model: modelNameInput.value,
+        api_key_env: modelApiKeyEnvInput.value,
+        api_key_value: modelApiKeyValueInput.value,
+        temperature: Number(modelTemperatureInput.value),
+        max_tokens: Number(modelMaxTokensInput.value),
+        timeout_seconds: Number(modelTimeoutSecondsInput.value)
+      })
+    });
+
+    modelApiKeyValueInput.value = '';
+    modelConfigResult.textContent = data.success
+      ? 'Model test passed.'
+      : `Model test failed: ${data.error || 'Unknown error'}`;
+
+    await Promise.all([loadModelConfigStatus(), loadStatus(), loadFiles()]);
+  } catch (error) {
+    modelConfigResult.textContent = error.message;
+  } finally {
+    modelSaveTestButton.disabled = false;
+  }
+});
+
 document.querySelector('#reset-runtime').addEventListener('click', async event => {
   const button = event.currentTarget;
   const mode = document.querySelector('input[name="reset-mode"]:checked').value;
@@ -114,9 +230,11 @@ document.querySelector('#reset-runtime').addEventListener('click', async event =
     resetResult.textContent = data.message;
     commandResult.textContent = '尚未运行命令。';
     uploadResult.textContent = '';
+    modelApiKeyValueInput.value = '';
     viewerTitle.textContent = '只读查看器';
     viewer.textContent = '选择输出文件或日志进行查看。';
-    await Promise.all([loadStatus(), loadFiles()]);
+    modelConfigResult.textContent = '保存后将自动执行真实模型测试。';
+    await Promise.all([loadModelConfigStatus(), loadStatus(), loadFiles()]);
   } catch (error) {
     resetResult.textContent = error.message;
   } finally {
@@ -161,3 +279,4 @@ function showError(error) {
 }
 
 Promise.all([loadStatus(), loadFiles()]).catch(showError);
+Promise.all([loadModelConfigStatus()]).catch(showError);

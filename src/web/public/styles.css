@@ -164,6 +164,7 @@ body {
 }
 
 .status-panel,
+.model-config-panel,
 .files-panel,
 .viewer-panel {
   grid-column: span 12;
@@ -177,6 +178,7 @@ body {
 }
 
 .status-panel,
+.model-config-panel,
 .control-panel,
 .command-panel,
 .upload-panel,
@@ -226,10 +228,55 @@ h2 {
 .section-copy,
 .helper-text,
 .inline-result,
-.empty-state {
+.empty-state,
+.model-config-status {
   margin: 0;
   color: var(--ink-soft);
   line-height: 1.7;
+}
+
+.model-config-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.model-config-status {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(229, 237, 244, 0.55));
+}
+
+.form-field {
+  display: grid;
+  gap: 8px;
+}
+
+.form-field input,
+.form-field select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--ink);
+  font: inherit;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+  outline: 2px solid rgba(30, 79, 120, 0.18);
+  outline-offset: 0;
+  border-color: var(--primary);
+}
+
+.model-config-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  grid-column: 1 / -1;
 }
 
 .cards {
@@ -470,6 +517,7 @@ input[type="file"]::file-selector-button {
 
   .hero,
   .status-panel,
+  .model-config-panel,
   .control-panel,
   .command-panel,
   .upload-panel,
@@ -485,9 +533,14 @@ input[type="file"]::file-selector-button {
   }
 
   .actions,
-  .upload-form {
+  .upload-form,
+  .model-config-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .model-config-form {
+    grid-template-columns: 1fr;
   }
 
   button,
