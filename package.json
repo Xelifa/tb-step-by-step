@@ -18,6 +18,8 @@
     "prestep2:confirm": "npm run build",
     "step2:section": "node dist/commands/step2-section.js",
     "prestep2:section": "npm run build",
+    "step2:status": "node dist/commands/step2-status.js",
+    "prestep2:status": "npm run build",
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rimraf dist"
