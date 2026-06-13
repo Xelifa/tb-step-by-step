@@ -129,6 +129,14 @@ export async function markSectionCompleted(outputFilename: string): Promise<void
   logger.success(`Completed section: ${outputFilename}`);
 }
 
+// Update state after final document combined
+export async function markFinalCombined(): Promise<void> {
+  const state = await loadWorkflowState();
+  state.final_combined = true;
+  await writeJSONFile(STATE_FILE, state);
+  logger.success('Final document combined');
+}
+
 // Update state after successful test
 export async function markModelTestPassed(): Promise<void> {
   const state = await loadWorkflowState();
