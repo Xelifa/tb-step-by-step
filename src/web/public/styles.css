@@ -52,7 +52,8 @@ section {
 
 .section-heading,
 .actions,
-form {
+form,
+.reset-panel {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -65,7 +66,7 @@ form {
 .cards,
 .viewer-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -91,6 +92,12 @@ form {
 }
 
 .next-command {
+  margin-bottom: 6px;
+}
+
+.status-line,
+.helper-text,
+#reset-result {
   margin-bottom: 0;
 }
 
@@ -116,6 +123,26 @@ button.secondary,
   border-color: #cbd5e1;
   color: #26364d;
   background: #fff;
+}
+
+.reset-panel {
+  align-items: stretch;
+  flex-direction: column;
+  margin-bottom: 12px;
+}
+
+.reset-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #dbe2ea;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.reset-option input {
+  margin: 0;
 }
 
 .viewer-grid {

@@ -15,6 +15,8 @@ const inputDir = path.join(projectRoot, 'input');
 const outputDir = path.join(projectRoot, 'output');
 const sectionsDir = path.join(outputDir, 'sections');
 const logsDir = path.join(projectRoot, 'logs');
+const configDir = path.join(projectRoot, 'config');
+const dashboardSessionFile = path.join(logsDir, '.web-ui-session');
 
 const topLevelOutputs = new Set([
   'new-prompt.md',
@@ -39,6 +41,13 @@ const allowedCommands = {
   workflow: ['run', 'workflow'],
   'step2:status': ['run', 'step2:status']
 } as const;
+
+type ResetMode = 'workflow' | 'all';
+
+interface DashboardSession {
+  last_reset_at: string;
+  reset_mode: ResetMode;
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -70,6 +79,11 @@ async function readJson<T>(filePath: string): Promise<T | null> {
   }
 }
 
+async function writeJson(filePath: string, data: unknown): Promise<void> {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+}
+
 async function listFiles(dir: string, extension: string): Promise<string[]> {
   try {
     return (await fs.readdir(dir))
@@ -83,14 +97,208 @@ async function listFiles(dir: string, extension: string): Promise<string[]> {
   }
 }
 
-function nextCommand(state: WorkflowState, totalSections: number): string {
-  if (!state.model_test_passed) return 'npm run config';
-  if (!state.new_prompt_generated) return 'npm run step1';
-  if (!state.outline_generated) return 'npm run step2:outline';
-  if (!state.outline_confirmed) return 'npm run step2:confirm';
-  if (state.completed_sections.length < totalSections) return 'npm run step2:section';
-  if (!state.final_combined) return 'npm run final:combine';
-  return 'workflow_complete';
+function nowIsoString(): string {
+  return new Date().toISOString();
+}
+
+async function readDashboardSession(): Promise<DashboardSession> {
+  const session = await readJson<DashboardSession>(dashboardSessionFile);
+  if (session) {
+    return session;
+  }
+
+  const freshSession: DashboardSession = {
+    last_reset_at: nowIsoString(),
+    reset_mode: 'workflow'
+  };
+
+  await writeJson(dashboardSessionFile, freshSession);
+  return freshSession;
+}
+
+async function fileModifiedAfter(filePath: string, cutoffIso: string): Promise<boolean> {
+  try {
+    const stats = await fs.stat(filePath);
+    return stats.mtime.getTime() >= new Date(cutoffIso).getTime();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return false;
+    }
+    throw error;
+  }
+}
+
+async function listFreshFiles(dir: string, extension: string, cutoffIso: string): Promise<string[]> {
+  const files = await listFiles(dir, extension);
+  const freshFiles = await Promise.all(files.map(async name => {
+    const isFresh = await fileModifiedAfter(path.join(dir, name), cutoffIso);
+    return isFresh ? name : null;
+  }));
+
+  return freshFiles.filter((name): name is string => name !== null);
+}
+
+async function deleteIfExists(filePath: string): Promise<void> {
+  try {
+    await fs.unlink(filePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw error;
+    }
+  }
+}
+
+async function resetRuntime(mode: ResetMode): Promise<{ mode: ResetMode; kept_env: boolean; removed_config: boolean; }> {
+  const logFiles = await listFiles(logsDir, '.json');
+  const inputFiles = await listFiles(inputDir, '.docx');
+  const sectionFiles = await listFiles(sectionsDir, '.md');
+
+  await Promise.all([
+    ...logFiles.map(name => deleteIfExists(path.join(logsDir, name))),
+    ...inputFiles.map(name => deleteIfExists(path.join(inputDir, name))),
+    ...sectionFiles.map(name => deleteIfExists(path.join(sectionsDir, name))),
+    ...[...topLevelOutputs].map(name => deleteIfExists(path.join(outputDir, name)))
+  ]);
+
+  let removedConfig = false;
+  if (mode === 'all') {
+    const modelConfigPath = path.join(configDir, 'model.json');
+    removedConfig = await fileModifiedAfter(modelConfigPath, '1970-01-01T00:00:00.000Z');
+    await deleteIfExists(modelConfigPath);
+  }
+
+  await writeJson(dashboardSessionFile, {
+    last_reset_at: nowIsoString(),
+    reset_mode: mode
+  } satisfies DashboardSession);
+
+  return {
+    mode,
+    kept_env: true,
+    removed_config: removedConfig
+  };
+}
+
+async function getStatusSnapshot(): Promise<{
+  current_step: string;
+  workflow_status: 'pending' | 'in_progress' | 'complete';
+  next_recommended_command: string;
+  next_recommended_label: string;
+  completed_sections_count: number;
+  total_sections_count: number;
+  final_combine_status: 'pending' | 'completed';
+  state: WorkflowState;
+  summary: {
+    model_gate: 'pending' | 'completed';
+    step1_new_prompt: 'pending' | 'completed';
+    step2_outline: 'pending' | 'completed';
+    step2_confirm: 'pending' | 'completed';
+    sections: string;
+    final_combine: 'pending' | 'completed';
+  };
+}> {
+  const session = await readDashboardSession();
+  const state = await readJson<WorkflowState>(path.join(logsDir, 'workflow-state.json'))
+    ?? INITIAL_WORKFLOW_STATE;
+
+  const modelGatePassed = state.model_configured
+    && state.model_test_passed
+    && await fileModifiedAfter(path.join(configDir, 'model.json'), session.last_reset_at)
+    && await fileModifiedAfter(path.join(logsDir, 'model-test.json'), session.last_reset_at)
+    && await fileModifiedAfter(path.join(logsDir, 'workflow-state.json'), session.last_reset_at);
+
+  const freshTenderFiles = modelGatePassed
+    ? await listFreshFiles(inputDir, '.docx', session.last_reset_at)
+    : [];
+  const hasTenderFile = freshTenderFiles.length > 0;
+
+  const step1Generated = modelGatePassed
+    && hasTenderFile
+    && state.new_prompt_generated
+    && await fileModifiedAfter(path.join(outputDir, 'new-prompt.md'), session.last_reset_at)
+    && await fileModifiedAfter(path.join(logsDir, 'step1-run.json'), session.last_reset_at);
+
+  const outlineGenerated = step1Generated
+    && state.outline_generated
+    && await fileModifiedAfter(path.join(outputDir, 'outline.md'), session.last_reset_at)
+    && await fileModifiedAfter(path.join(logsDir, 'step2-outline-run.json'), session.last_reset_at);
+
+  let totalSections = 0;
+  if (outlineGenerated) {
+    const outlineLog = await readJson<{ outline?: { sections?: unknown[] } }>(
+      path.join(logsDir, 'step2-outline-run.json')
+    );
+    totalSections = outlineLog?.outline?.sections?.length ?? 0;
+  }
+
+  const outlineConfirmed = outlineGenerated
+    && state.step2_confirmed
+    && state.outline_confirmed
+    && await fileModifiedAfter(path.join(logsDir, 'step2-confirm-run.json'), session.last_reset_at);
+
+  const freshSectionFiles = outlineConfirmed
+    ? await listFreshFiles(sectionsDir, '.md', session.last_reset_at)
+    : [];
+  const completedSectionsCount = outlineConfirmed ? freshSectionFiles.length : 0;
+
+  const finalCombined = outlineConfirmed
+    && state.final_combined
+    && await fileModifiedAfter(path.join(outputDir, 'final-combined.md'), session.last_reset_at);
+
+  let currentStep = 'Workflow Complete';
+  let nextRecommendedCommand = 'workflow_complete';
+  let nextRecommendedLabel = 'Workflow complete';
+
+  if (!modelGatePassed) {
+    currentStep = 'Configure Model API';
+    nextRecommendedCommand = 'npm run config';
+    nextRecommendedLabel = 'npm run config';
+  } else if (!hasTenderFile) {
+    currentStep = 'Upload Tender .docx';
+    nextRecommendedCommand = 'Upload tender .docx';
+    nextRecommendedLabel = 'Upload tender .docx';
+  } else if (!step1Generated) {
+    currentStep = 'Run Step 1';
+    nextRecommendedCommand = 'npm run step1';
+    nextRecommendedLabel = 'npm run step1';
+  } else if (!outlineGenerated) {
+    currentStep = 'Generate Outline';
+    nextRecommendedCommand = 'npm run step2:outline';
+    nextRecommendedLabel = 'npm run step2:outline';
+  } else if (!outlineConfirmed) {
+    currentStep = 'Confirm Outline';
+    nextRecommendedCommand = 'npm run step2:confirm';
+    nextRecommendedLabel = 'npm run step2:confirm';
+  } else if (completedSectionsCount < totalSections) {
+    currentStep = 'Write Sections';
+    nextRecommendedCommand = 'npm run step2:section';
+    nextRecommendedLabel = 'npm run step2:section';
+  } else if (!finalCombined) {
+    currentStep = 'Combine Final Document';
+    nextRecommendedCommand = 'npm run final:combine';
+    nextRecommendedLabel = 'npm run final:combine';
+  }
+
+  return {
+    current_step: currentStep,
+    workflow_status: nextRecommendedCommand === 'workflow_complete'
+      ? 'complete'
+      : modelGatePassed ? 'in_progress' : 'pending',
+    next_recommended_command: nextRecommendedCommand,
+    next_recommended_label: nextRecommendedLabel,
+    completed_sections_count: modelGatePassed ? completedSectionsCount : 0,
+    total_sections_count: modelGatePassed ? totalSections : 0,
+    final_combine_status: finalCombined ? 'completed' : 'pending',
+    state,
+    summary: {
+      model_gate: modelGatePassed ? 'completed' : 'pending',
+      step1_new_prompt: step1Generated ? 'completed' : 'pending',
+      step2_outline: outlineGenerated ? 'completed' : 'pending',
+      step2_confirm: outlineConfirmed ? 'completed' : 'pending',
+      sections: `${modelGatePassed ? completedSectionsCount : 0} / ${modelGatePassed ? totalSections : 0}`,
+      final_combine: finalCombined ? 'completed' : 'pending'
+    }
+  };
 }
 
 async function runAllowedCommand(command: keyof typeof allowedCommands): Promise<{
@@ -114,24 +322,26 @@ async function runAllowedCommand(command: keyof typeof allowedCommands): Promise
 
 app.get('/api/status', async (_request: Request, response: Response) => {
   try {
-    const state = await readJson<WorkflowState>(path.join(logsDir, 'workflow-state.json'))
-      ?? INITIAL_WORKFLOW_STATE;
-    const outlineLog = await readJson<{ outline?: { sections?: unknown[] } }>(
-      path.join(logsDir, 'step2-outline-run.json')
-    );
-    const totalSections = outlineLog?.outline?.sections?.length ?? 0;
-    const recommendedCommand = nextCommand(state, totalSections);
-
-    response.json({
-      workflow_status: recommendedCommand === 'workflow_complete' ? 'complete' : 'in_progress',
-      next_recommended_command: recommendedCommand,
-      completed_sections_count: state.completed_sections.length,
-      total_sections_count: totalSections,
-      final_combine_status: state.final_combined ? 'completed' : 'pending',
-      state
-    });
+    response.json(await getStatusSnapshot());
   } catch (error) {
     response.status(500).json({ error: error instanceof Error ? error.message : 'Unable to read status' });
+  }
+});
+
+app.post('/api/reset', async (request: Request, response: Response) => {
+  try {
+    const mode = request.body?.mode === 'all' ? 'all' : 'workflow';
+    const result = await resetRuntime(mode);
+
+    response.json({
+      success: true,
+      ...result,
+      message: mode === 'all'
+        ? 'Runtime cleared. Model configuration file removed. .env was kept intentionally and is still never exposed.'
+        : 'Runtime cleared. Existing .env and config/model.json were kept, but the dashboard now starts from model API configuration again.'
+    });
+  } catch (error) {
+    response.status(500).json({ error: error instanceof Error ? error.message : 'Reset failed' });
   }
 });
 
@@ -171,15 +381,13 @@ app.post('/api/run/step2-status', async (_request: Request, response: Response) 
 
 app.get('/api/output', async (_request: Request, response: Response) => {
   try {
+    const session = await readDashboardSession();
     const topLevel = (await Promise.all([...topLevelOutputs].map(async name => {
-      try {
-        await fs.access(path.join(outputDir, name));
-        return name;
-      } catch {
-        return null;
-      }
+      return await fileModifiedAfter(path.join(outputDir, name), session.last_reset_at)
+        ? name
+        : null;
     }))).filter((name): name is string => name !== null);
-    const sections = await listFiles(sectionsDir, '.md');
+    const sections = await listFreshFiles(sectionsDir, '.md', session.last_reset_at);
     response.json({
       files: [
         ...topLevel.map(name => ({ name, source: name })),
@@ -193,14 +401,18 @@ app.get('/api/output', async (_request: Request, response: Response) => {
 
 app.get('/api/output/:name', async (request: Request, response: Response) => {
   try {
+    const session = await readDashboardSession();
     const name = singleParam(request.params.name);
     if (!isSafeFilename(name)) {
       response.status(404).json({ error: 'Output not found' });
       return;
     }
 
-    let filePath: string | null = topLevelOutputs.has(name) ? path.join(outputDir, name) : null;
-    if (!filePath && (await listFiles(sectionsDir, '.md')).includes(name)) {
+    let filePath: string | null = topLevelOutputs.has(name)
+      && await fileModifiedAfter(path.join(outputDir, name), session.last_reset_at)
+      ? path.join(outputDir, name)
+      : null;
+    if (!filePath && (await listFreshFiles(sectionsDir, '.md', session.last_reset_at)).includes(name)) {
       filePath = path.join(sectionsDir, name);
     }
     if (!filePath) {
@@ -220,7 +432,8 @@ app.get('/api/output/:name', async (request: Request, response: Response) => {
 
 app.get('/api/logs', async (_request: Request, response: Response) => {
   try {
-    const existingLogs = await listFiles(logsDir, '.json');
+    const session = await readDashboardSession();
+    const existingLogs = await listFreshFiles(logsDir, '.json', session.last_reset_at);
     response.json({ files: existingLogs.filter(name => safeLogFiles.has(name)) });
   } catch (error) {
     response.status(500).json({ error: error instanceof Error ? error.message : 'Unable to list logs' });
@@ -229,8 +442,9 @@ app.get('/api/logs', async (_request: Request, response: Response) => {
 
 app.get('/api/logs/:name', async (request: Request, response: Response) => {
   try {
+    const session = await readDashboardSession();
     const name = singleParam(request.params.name);
-    const existingLogs = await listFiles(logsDir, '.json');
+    const existingLogs = await listFreshFiles(logsDir, '.json', session.last_reset_at);
     if (!isSafeFilename(name) || !safeLogFiles.has(name) || !existingLogs.includes(name)) {
       response.status(404).json({ error: 'Log not found' });
       return;

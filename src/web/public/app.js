@@ -1,7 +1,9 @@
 const statusCards = document.querySelector('#status-cards');
+const currentStep = document.querySelector('#current-step');
 const nextCommand = document.querySelector('#next-command');
 const commandResult = document.querySelector('#command-result');
 const uploadResult = document.querySelector('#upload-result');
+const resetResult = document.querySelector('#reset-result');
 const viewer = document.querySelector('#viewer');
 const viewerTitle = document.querySelector('#viewer-title');
 
@@ -27,11 +29,15 @@ function card(label, value) {
 async function loadStatus() {
   const data = await request('/api/status');
   statusCards.replaceChildren(
-    card('工作流', data.workflow_status),
-    card('已完成章节', `${data.completed_sections_count} / ${data.total_sections_count}`),
-    card('最终组合', data.final_combine_status)
+    card('Model Gate', data.summary.model_gate),
+    card('Step 1 new-prompt', data.summary.step1_new_prompt),
+    card('Step 2 outline', data.summary.step2_outline),
+    card('Step 2 confirm', data.summary.step2_confirm),
+    card('Sections', data.summary.sections),
+    card('Final combine', data.summary.final_combine)
   );
-  nextCommand.textContent = data.next_recommended_command;
+  currentStep.textContent = data.current_step;
+  nextCommand.textContent = data.next_recommended_label;
 }
 
 function addFileButtons(containerId, files, kind) {
@@ -69,6 +75,39 @@ async function loadFiles() {
 
 document.querySelector('#refresh-status').addEventListener('click', () => loadStatus().catch(showError));
 
+document.querySelector('#reset-runtime').addEventListener('click', async event => {
+  const button = event.currentTarget;
+  const mode = document.querySelector('input[name="reset-mode"]:checked').value;
+  const confirmationMessage = mode === 'all'
+    ? 'This will clear runtime files and remove config/model.json. .env will be kept. Continue?'
+    : 'This will clear runtime files and restart the dashboard from a fresh project state. Continue?';
+
+  if (!window.confirm(confirmationMessage)) {
+    return;
+  }
+
+  button.disabled = true;
+  resetResult.textContent = '正在重置...';
+
+  try {
+    const data = await request('/api/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode })
+    });
+    resetResult.textContent = data.message;
+    commandResult.textContent = '尚未运行命令。';
+    uploadResult.textContent = '';
+    viewerTitle.textContent = '只读查看器';
+    viewer.textContent = '选择输出文件或日志进行查看。';
+    await Promise.all([loadStatus(), loadFiles()]);
+  } catch (error) {
+    resetResult.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
+
 document.querySelectorAll('[data-command]').forEach(button => {
   button.addEventListener('click', async () => {
     const command = button.dataset.command;
@@ -95,6 +134,7 @@ document.querySelector('#upload-form').addEventListener('submit', async event =>
   try {
     const data = await request('/api/upload', { method: 'POST', body });
     uploadResult.textContent = `已上传：${data.filename}`;
+    await loadStatus();
   } catch (error) {
     uploadResult.textContent = error.message;
   }

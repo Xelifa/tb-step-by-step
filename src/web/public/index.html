@@ -20,7 +20,28 @@
         <button id="refresh-status" class="secondary">刷新</button>
       </div>
       <div id="status-cards" class="cards"></div>
+      <p class="status-line">当前步骤：<strong id="current-step">加载中...</strong></p>
       <p class="next-command">建议下一步：<code id="next-command">加载中...</code></p>
+      <p class="helper-text">如果模型尚未重新配置，请先在终端运行 <code>npm run config</code>。</p>
+    </section>
+
+    <section>
+      <h2>New Project / Reset Runtime</h2>
+      <p>清空当前运行痕迹，回到新的项目起点。默认仅重置工作流文件，不暴露也不删除 `.env`。</p>
+      <div class="reset-panel">
+        <label class="reset-option">
+          <input type="radio" name="reset-mode" value="workflow" checked>
+          <span>Reset workflow only</span>
+        </label>
+        <label class="reset-option">
+          <input type="radio" name="reset-mode" value="all">
+          <span>Reset everything and start from model API configuration</span>
+        </label>
+      </div>
+      <div class="actions">
+        <button id="reset-runtime">New Project / Reset Runtime</button>
+      </div>
+      <p id="reset-result"></p>
     </section>
 
     <section>
