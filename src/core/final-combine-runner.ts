@@ -76,3 +76,53 @@ function readSectionFile(filename: string): string {
 
   return fs.readFileSync(filePath, 'utf-8');
 }
+
+/**
+ * Check section completion status
+ */
+function checkSectionCompletion(
+  outline: Outline,
+  generatedFiles: string[]
+): {
+  missingSections: string[];
+  missingFilenames: string[];
+  allComplete: boolean;
+} {
+  const missingSections: string[] = [];
+  const missingFilenames: string[] = [];
+
+  for (const section of outline.sections) {
+    const filename = section.output_filename;
+    if (!generatedFiles.includes(filename)) {
+      missingSections.push(section.title);
+      missingFilenames.push(filename);
+    }
+  }
+
+  return {
+    missingSections,
+    missingFilenames,
+    allComplete: missingSections.length === 0
+  };
+}
+
+/**
+ * Prompt user for partial combination confirmation
+ */
+async function promptPartialCombine(missingSections: string[]): Promise<boolean> {
+  logger.warn('');
+  logger.warn('Missing sections detected:');
+  for (const section of missingSections) {
+    logger.warn(`  • ${section}`);
+  }
+  logger.warn('');
+
+  const { proceed } = await inquirer.prompt<{ proceed: boolean }>([{
+    type: 'confirm',
+    name: 'proceed',
+    message: 'Some sections are missing. Combine only completed sections?',
+    default: false
+  }]);
+
+  return proceed;
+}
