@@ -9,6 +9,7 @@ import {
   getSanitizedModelConfigStatus,
   saveAndTestModelConfiguration
 } from '../core/model-config-service';
+import { runStep1 } from '../core/step1-runner';
 
 const execFileAsync = promisify(execFile);
 const app = express();
@@ -400,6 +401,22 @@ app.post('/api/upload', upload.single('tender'), async (request: Request, respon
     response.json({ success: true, filename });
   } catch (error) {
     response.status(500).json({ error: error instanceof Error ? error.message : 'Upload failed' });
+  }
+});
+
+app.post('/api/step1/run', async (_request: Request, response: Response) => {
+  try {
+    const result = await runStep1();
+    response.json({
+      success: result.success,
+      message: result.success ? 'Step 1 completed successfully' : 'Step 1 failed',
+      error: result.error
+    });
+  } catch (error) {
+    response.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Step 1 execution failed'
+    });
   }
 });
 

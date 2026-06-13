@@ -4,6 +4,7 @@ const nextCommand = document.querySelector('#next-command');
 const commandResult = document.querySelector('#command-result');
 const uploadResult = document.querySelector('#upload-result');
 const resetResult = document.querySelector('#reset-result');
+const step1Result = document.querySelector('#step1-result');
 const viewer = document.querySelector('#viewer');
 const viewerTitle = document.querySelector('#viewer-title');
 const modelConfigStatus = document.querySelector('#model-config-status');
@@ -18,6 +19,7 @@ const modelApiKeyValueInput = document.querySelector('#model-api-key-value');
 const modelTemperatureInput = document.querySelector('#model-temperature');
 const modelMaxTokensInput = document.querySelector('#model-max-tokens');
 const modelTimeoutSecondsInput = document.querySelector('#model-timeout-seconds');
+const runStep1Button = document.querySelector('#run-step1');
 
 const providerDefaults = {
   openai: {
@@ -91,6 +93,13 @@ async function loadStatus() {
   );
   currentStep.textContent = data.current_step;
   nextCommand.textContent = data.next_recommended_label;
+
+  // Show/hide Step 1 button based on status
+  const modelGatePassed = data.summary.model_gate === 'completed';
+  const hasTenderFile = data.summary.step1_new_prompt !== 'completed' && data.state.model_test_passed;
+  const step1NotComplete = data.summary.step1_new_prompt === 'pending';
+
+  runStep1Button.style.display = modelGatePassed && hasTenderFile && step1NotComplete ? 'inline-block' : 'none';
 }
 
 function applyProviderDefaults(provider) {
@@ -271,6 +280,21 @@ document.querySelector('#upload-form').addEventListener('submit', async event =>
     await loadStatus();
   } catch (error) {
     uploadResult.textContent = error.message;
+  }
+});
+
+runStep1Button.addEventListener('click', async () => {
+  runStep1Button.disabled = true;
+  step1Result.textContent = 'Running Step 1...';
+
+  try {
+    const data = await request('/api/step1/run', { method: 'POST' });
+    step1Result.textContent = data.success ? 'Step 1 completed successfully' : `Step 1 failed: ${data.error || 'Unknown error'}`;
+    await Promise.all([loadStatus(), loadFiles()]);
+  } catch (error) {
+    step1Result.textContent = error.message;
+  } finally {
+    runStep1Button.disabled = false;
   }
 });
 
