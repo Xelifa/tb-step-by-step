@@ -5,6 +5,7 @@ const commandResult = document.querySelector('#command-result');
 const uploadResult = document.querySelector('#upload-result');
 const resetResult = document.querySelector('#reset-result');
 const step1Result = document.querySelector('#step1-result');
+const step2OutlineResult = document.querySelector('#step2-outline-result');
 const viewer = document.querySelector('#viewer');
 const viewerTitle = document.querySelector('#viewer-title');
 const modelConfigStatus = document.querySelector('#model-config-status');
@@ -20,6 +21,7 @@ const modelTemperatureInput = document.querySelector('#model-temperature');
 const modelMaxTokensInput = document.querySelector('#model-max-tokens');
 const modelTimeoutSecondsInput = document.querySelector('#model-timeout-seconds');
 const runStep1Button = document.querySelector('#run-step1');
+const runStep2OutlineButton = document.querySelector('#run-step2-outline');
 
 const providerDefaults = {
   openai: {
@@ -100,6 +102,12 @@ async function loadStatus() {
   const step1NotComplete = data.summary.step1_new_prompt === 'pending';
 
   runStep1Button.style.display = modelGatePassed && hasTenderFile && step1NotComplete ? 'inline-block' : 'none';
+
+  // Show/hide Step 2 Outline button based on status
+  const step1Completed = data.summary.step1_new_prompt === 'completed';
+  const step2OutlineNotComplete = data.summary.step2_outline === 'pending';
+
+  runStep2OutlineButton.style.display = modelGatePassed && step1Completed && step2OutlineNotComplete ? 'inline-block' : 'none';
 }
 
 function applyProviderDefaults(provider) {
@@ -276,7 +284,7 @@ document.querySelector('#upload-form').addEventListener('submit', async event =>
   uploadResult.textContent = '正在上传...';
   try {
     const data = await request('/api/upload', { method: 'POST', body });
-    uploadResult.textContent = `已上传：${data.filename}`;
+    uploadResult.textContent = `已上传：${data.display_name || data.filename}`;
     await loadStatus();
   } catch (error) {
     uploadResult.textContent = error.message;
@@ -295,6 +303,21 @@ runStep1Button.addEventListener('click', async () => {
     step1Result.textContent = error.message;
   } finally {
     runStep1Button.disabled = false;
+  }
+});
+
+runStep2OutlineButton.addEventListener('click', async () => {
+  runStep2OutlineButton.disabled = true;
+  step2OutlineResult.textContent = 'Generating outline...';
+
+  try {
+    const data = await request('/api/step2/outline', { method: 'POST' });
+    step2OutlineResult.textContent = data.success ? 'Step 2 outline generated successfully' : `Step 2 outline failed: ${data.error || 'Unknown error'}`;
+    await Promise.all([loadStatus(), loadFiles()]);
+  } catch (error) {
+    step2OutlineResult.textContent = error.message;
+  } finally {
+    runStep2OutlineButton.disabled = false;
   }
 });
 

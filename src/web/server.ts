@@ -10,6 +10,7 @@ import {
   saveAndTestModelConfiguration
 } from '../core/model-config-service';
 import { runStep1 } from '../core/step1-runner';
+import { runStep2Outline } from '../core/step2-outline-runner';
 
 const execFileAsync = promisify(execFile);
 const app = express();
@@ -396,9 +397,18 @@ app.post('/api/upload', upload.single('tender'), async (request: Request, respon
     }
 
     await fs.mkdir(inputDir, { recursive: true });
-    const filename = path.basename(request.file.originalname);
+
+    // Preserve original filename with proper encoding
+    const originalName = request.file.originalname;
+    const filename = 'tender-current.docx';
+
     await fs.writeFile(path.join(inputDir, filename), request.file.buffer);
-    response.json({ success: true, filename });
+
+    response.json({
+      success: true,
+      filename: filename,
+      display_name: originalName
+    });
   } catch (error) {
     response.status(500).json({ error: error instanceof Error ? error.message : 'Upload failed' });
   }
@@ -416,6 +426,22 @@ app.post('/api/step1/run', async (_request: Request, response: Response) => {
     response.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Step 1 execution failed'
+    });
+  }
+});
+
+app.post('/api/step2/outline', async (_request: Request, response: Response) => {
+  try {
+    const result = await runStep2Outline();
+    response.json({
+      success: result.success,
+      message: result.success ? 'Step 2 outline generated successfully' : 'Step 2 outline generation failed',
+      error: result.error
+    });
+  } catch (error) {
+    response.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Step 2 outline execution failed'
     });
   }
 });
