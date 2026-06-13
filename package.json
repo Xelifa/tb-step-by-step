@@ -24,6 +24,8 @@
     "prefinal:combine": "npm run build",
     "workflow": "node dist/commands/workflow.js",
     "preworkflow": "npm run build",
+    "web": "node dist/web/server.js",
+    "preweb": "npm run build",
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rimraf dist"
@@ -38,11 +40,15 @@
   "license": "MIT",
   "dependencies": {
     "dotenv": "^16.4.0",
+    "express": "^5.2.1",
     "inquirer": "^8.2.6",
-    "mammoth": "^1.12.0"
+    "mammoth": "^1.12.0",
+    "multer": "^2.1.1"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/inquirer": "^8.2.0",
+    "@types/multer": "^2.1.0",
     "@types/node": "^20.0.0",
     "rimraf": "^5.0.0",
     "typescript": "^5.3.0"

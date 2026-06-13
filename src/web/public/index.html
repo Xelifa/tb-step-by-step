@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TB Step by Step</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">Local workflow dashboard</p>
+      <h1>TB Step by Step</h1>
+      <p>查看进度、上传招标文件，并安全读取工作流输出。</p>
+    </header>
+
+    <section>
+      <div class="section-heading">
+        <h2>工作流状态</h2>
+        <button id="refresh-status" class="secondary">刷新</button>
+      </div>
+      <div id="status-cards" class="cards"></div>
+      <p class="next-command">建议下一步：<code id="next-command">加载中...</code></p>
+    </section>
+
+    <section>
+      <h2>安全命令</h2>
+      <p>仅可运行固定的非交互命令。</p>
+      <div class="actions">
+        <button data-command="workflow">npm run workflow</button>
+        <button data-command="step2-status">npm run step2:status</button>
+      </div>
+      <pre id="command-result">尚未运行命令。</pre>
+    </section>
+
+    <section>
+      <h2>上传招标文件</h2>
+      <form id="upload-form">
+        <input id="tender-file" name="tender" type="file" accept=".docx" required>
+        <button type="submit">上传到 input/</button>
+      </form>
+      <p id="upload-result"></p>
+    </section>
+
+    <section>
+      <h2>交互命令</h2>
+      <p>以下步骤暂时请在终端中运行：</p>
+      <pre>npm run step1
+npm run step2:outline
+npm run step2:confirm
+npm run step2:section
+npm run final:combine</pre>
+    </section>
+
+    <section class="viewer-grid">
+      <div>
+        <h2>输出文件</h2>
+        <div id="output-list" class="file-list"></div>
+      </div>
+      <div>
+        <h2>安全日志</h2>
+        <div id="log-list" class="file-list"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2 id="viewer-title">只读查看器</h2>
+      <pre id="viewer">选择输出文件或日志进行查看。</pre>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
