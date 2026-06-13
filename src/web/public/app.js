@@ -18,11 +18,24 @@ async function request(url, options) {
 
 function card(label, value) {
   const element = document.createElement('article');
+  const normalizedValue = String(value).toLowerCase();
   const heading = document.createElement('span');
   const content = document.createElement('strong');
+  const accent = document.createElement('i');
+
+  element.className = 'status-card';
+  if (normalizedValue.includes('pending') || normalizedValue === '0 / 0') {
+    element.dataset.state = 'pending';
+  } else if (normalizedValue.includes('complete') || normalizedValue.includes('completed')) {
+    element.dataset.state = 'completed';
+  } else {
+    element.dataset.state = 'active';
+  }
+
   heading.textContent = label;
   content.textContent = value;
-  element.append(heading, content);
+  accent.setAttribute('aria-hidden', 'true');
+  element.append(accent, heading, content);
   return element;
 }
 
@@ -44,7 +57,10 @@ function addFileButtons(containerId, files, kind) {
   const container = document.querySelector(containerId);
   container.replaceChildren();
   if (!files.length) {
-    container.textContent = '暂无文件';
+    const emptyState = document.createElement('p');
+    emptyState.className = 'empty-state';
+    emptyState.textContent = '暂无文件';
+    container.append(emptyState);
     return;
   }
   for (const file of files) {

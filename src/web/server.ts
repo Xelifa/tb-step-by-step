@@ -58,7 +58,18 @@ const upload = multer({
 });
 
 app.use(express.json());
-app.use(express.static(publicDir));
+app.use(express.static(publicDir, {
+  etag: false,
+  lastModified: false,
+  setHeaders: response => {
+    response.setHeader('Cache-Control', 'no-store');
+  }
+}));
+
+app.get('/', (_request: Request, response: Response) => {
+  response.setHeader('Cache-Control', 'no-store');
+  response.sendFile(path.join(publicDir, 'index.html'));
+});
 
 function isSafeFilename(name: string): boolean {
   return name === path.basename(name) && !name.startsWith('.');

@@ -4,91 +4,135 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TB Step by Step</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=web-static-fix-1">
 </head>
 <body>
-  <main>
-    <header>
-      <p class="eyebrow">Local workflow dashboard</p>
-      <h1>TB Step by Step</h1>
-      <p>查看进度、上传招标文件，并安全读取工作流输出。</p>
-    </header>
+  <div class="page-shell">
+    <main class="app-shell">
+      <header class="hero surface">
+        <div class="hero-copy">
+          <p class="eyebrow">TB Step by Step Workflow</p>
+          <h1>本地投标工作流控制台</h1>
+          <p class="hero-description">围绕真实模型配置、固定步骤执行和文件化输出建立的本地仪表盘。页面仅封装已接受的 CLI 工作流，不改写核心逻辑。</p>
+        </div>
+        <aside class="hero-summary">
+          <p class="summary-label">Current step</p>
+          <strong id="current-step" class="summary-value">加载中...</strong>
+          <p class="summary-label">Next command</p>
+          <code id="next-command" class="summary-command">加载中...</code>
+          <p class="helper-text">如果模型尚未重新配置，请先在终端运行 <code>npm run config</code>。</p>
+        </aside>
+      </header>
 
-    <section>
-      <div class="section-heading">
-        <h2>工作流状态</h2>
-        <button id="refresh-status" class="secondary">刷新</button>
-      </div>
-      <div id="status-cards" class="cards"></div>
-      <p class="status-line">当前步骤：<strong id="current-step">加载中...</strong></p>
-      <p class="next-command">建议下一步：<code id="next-command">加载中...</code></p>
-      <p class="helper-text">如果模型尚未重新配置，请先在终端运行 <code>npm run config</code>。</p>
-    </section>
+      <div class="content-grid">
+        <section class="surface status-panel">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">Status Overview</p>
+              <h2>工作流状态</h2>
+            </div>
+            <button id="refresh-status" class="secondary">刷新</button>
+          </div>
+          <div id="status-cards" class="cards"></div>
+        </section>
 
-    <section>
-      <h2>New Project / Reset Runtime</h2>
-      <p>清空当前运行痕迹，回到新的项目起点。默认仅重置工作流文件，不暴露也不删除 `.env`。</p>
-      <div class="reset-panel">
-        <label class="reset-option">
-          <input type="radio" name="reset-mode" value="workflow" checked>
-          <span>Reset workflow only</span>
-        </label>
-        <label class="reset-option">
-          <input type="radio" name="reset-mode" value="all">
-          <span>Reset everything and start from model API configuration</span>
-        </label>
-      </div>
-      <div class="actions">
-        <button id="reset-runtime">New Project / Reset Runtime</button>
-      </div>
-      <p id="reset-result"></p>
-    </section>
+        <section class="surface control-panel">
+          <div class="section-heading stacked">
+            <div>
+              <p class="section-kicker">Project Reset</p>
+              <h2>New Project / Reset Runtime</h2>
+            </div>
+            <p class="section-copy">清空当前运行痕迹，回到新的项目起点。默认仅重置工作流文件，不暴露也不删除 <code>.env</code>。</p>
+          </div>
+          <div class="reset-panel">
+            <label class="reset-option">
+              <input type="radio" name="reset-mode" value="workflow" checked>
+              <span>Reset workflow only</span>
+            </label>
+            <label class="reset-option">
+              <input type="radio" name="reset-mode" value="all">
+              <span>Reset everything and start from model API configuration</span>
+            </label>
+          </div>
+          <div class="actions">
+            <button id="reset-runtime">New Project / Reset Runtime</button>
+          </div>
+          <p id="reset-result" class="inline-result"></p>
+        </section>
 
-    <section>
-      <h2>安全命令</h2>
-      <p>仅可运行固定的非交互命令。</p>
-      <div class="actions">
-        <button data-command="workflow">npm run workflow</button>
-        <button data-command="step2-status">npm run step2:status</button>
-      </div>
-      <pre id="command-result">尚未运行命令。</pre>
-    </section>
+        <section class="surface command-panel">
+          <div class="section-heading stacked">
+            <div>
+              <p class="section-kicker">Safe Commands</p>
+              <h2>安全命令</h2>
+            </div>
+            <p class="section-copy">仅运行固定白名单命令，不接受任何用户自定义 shell 输入。</p>
+          </div>
+          <div class="actions wrap">
+            <button data-command="workflow">npm run workflow</button>
+            <button data-command="step2-status">npm run step2:status</button>
+          </div>
+          <pre id="command-result">尚未运行命令。</pre>
+        </section>
 
-    <section>
-      <h2>上传招标文件</h2>
-      <form id="upload-form">
-        <input id="tender-file" name="tender" type="file" accept=".docx" required>
-        <button type="submit">上传到 input/</button>
-      </form>
-      <p id="upload-result"></p>
-    </section>
+        <section class="surface upload-panel">
+          <div class="section-heading stacked">
+            <div>
+              <p class="section-kicker">Input Intake</p>
+              <h2>上传招标文件</h2>
+            </div>
+            <p class="section-copy">仅支持上传 `.docx` 到本地 `input/` 目录，供后续 Step 1 使用。</p>
+          </div>
+          <form id="upload-form" class="upload-form">
+            <label class="file-field" for="tender-file">
+              <span class="field-label">Tender file</span>
+              <input id="tender-file" name="tender" type="file" accept=".docx" required>
+            </label>
+            <button type="submit">上传到 input/</button>
+          </form>
+          <p id="upload-result" class="inline-result"></p>
+        </section>
 
-    <section>
-      <h2>交互命令</h2>
-      <p>以下步骤暂时请在终端中运行：</p>
-      <pre>npm run step1
+        <section class="surface instructions-panel">
+          <div class="section-heading stacked">
+            <div>
+              <p class="section-kicker">Terminal Guidance</p>
+              <h2>交互命令</h2>
+            </div>
+            <p class="section-copy">以下交互步骤仍通过终端执行，Web UI 只负责显示状态和查看文件结果。</p>
+          </div>
+          <pre>npm run step1
 npm run step2:outline
 npm run step2:confirm
 npm run step2:section
 npm run final:combine</pre>
-    </section>
+        </section>
 
-    <section class="viewer-grid">
-      <div>
-        <h2>输出文件</h2>
-        <div id="output-list" class="file-list"></div>
-      </div>
-      <div>
-        <h2>安全日志</h2>
-        <div id="log-list" class="file-list"></div>
-      </div>
-    </section>
+        <section class="surface files-panel viewer-grid">
+          <div class="file-column">
+            <p class="section-kicker">Documents</p>
+            <h2>输出文件</h2>
+            <div id="output-list" class="file-list"></div>
+          </div>
+          <div class="file-column">
+            <p class="section-kicker">Safe Logs</p>
+            <h2>安全日志</h2>
+            <div id="log-list" class="file-list"></div>
+          </div>
+        </section>
 
-    <section>
-      <h2 id="viewer-title">只读查看器</h2>
-      <pre id="viewer">选择输出文件或日志进行查看。</pre>
-    </section>
-  </main>
-  <script src="/app.js"></script>
+        <section class="surface viewer-panel">
+          <div class="section-heading stacked">
+            <div>
+              <p class="section-kicker">Read Only Viewer</p>
+              <h2 id="viewer-title">只读查看器</h2>
+            </div>
+          </div>
+          <pre id="viewer">选择输出文件或日志进行查看。</pre>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script defer src="/app.js?v=web-static-fix-1"></script>
 </body>
 </html>
