@@ -208,10 +208,10 @@ function generateFinalDocument(
  */
 export async function runFinalCombine(): Promise<FinalCombineRunResult> {
   try {
-    // Load environment
+    // Step 1: Load environment
     await loadEnvFile();
 
-    // Step 1: Verify model gate passed
+    // Step 2: Verify model gate passed
     logger.section('Verifying Model Gate');
     const gatePassed = await isModelGatePassed();
 
@@ -220,7 +220,7 @@ export async function runFinalCombine(): Promise<FinalCombineRunResult> {
     }
     logger.success('Model gate verified ✓');
 
-    // Step 2: Verify Step 1 completed
+    // Step 3: Verify Step 1 completed
     logger.section('Verifying Step 1 Completion');
     const step1State = await readJSONFile<{ new_prompt_generated: boolean }>('logs/workflow-state.json');
     if (!step1State || !step1State.new_prompt_generated) {
@@ -228,7 +228,7 @@ export async function runFinalCombine(): Promise<FinalCombineRunResult> {
     }
     logger.success('Step 1 completion verified ✓');
 
-    // Step 3: Verify Step 2 outline generated
+    // Step 4: Verify Step 2 outline generated
     logger.section('Verifying Step 2 Outline Generation');
     const step2State = await readJSONFile<{ outline_generated: boolean }>('logs/workflow-state.json');
     if (!step2State || !step2State.outline_generated) {
@@ -236,7 +236,7 @@ export async function runFinalCombine(): Promise<FinalCombineRunResult> {
     }
     logger.success('Step 2 outline generation verified ✓');
 
-    // Step 4: Verify Step 2 outline confirmed
+    // Step 5: Verify Step 2 outline confirmed
     logger.section('Verifying Step 2 Outline Confirmation');
     const confirmState = await readJSONFile<{ outline_confirmed: boolean }>('logs/workflow-state.json');
     if (!confirmState || !confirmState.outline_confirmed) {
@@ -244,17 +244,17 @@ export async function runFinalCombine(): Promise<FinalCombineRunResult> {
     }
     logger.success('Step 2 outline confirmation verified ✓');
 
-    // Step 5: Read input files
+    // Step 6: Read input files
     logger.section('Reading Input Files');
     const { workflowState, outline } = await readCombineInputFiles();
     logger.success('Input files loaded ✓');
 
-    // Step 6: Get generated section files
+    // Step 7: Get generated section files
     logger.section('Checking Generated Sections');
     const generatedFiles = getGeneratedSectionFiles();
     logger.info(`Found ${generatedFiles.length} generated section files`);
 
-    // Step 7: Check section completion
+    // Step 8: Check section completion
     const { missingSections, missingFilenames, allComplete } = checkSectionCompletion(outline, generatedFiles);
 
     const totalSections = outline.sections.length;
@@ -263,7 +263,7 @@ export async function runFinalCombine(): Promise<FinalCombineRunResult> {
 
     let partial = false;
 
-    // Step 8: Handle missing sections
+    // Step 9: Handle missing sections
     if (!allComplete) {
       const proceed = await promptPartialCombine(missingSections);
 
@@ -294,15 +294,15 @@ export async function runFinalCombine(): Promise<FinalCombineRunResult> {
       partial = true;
     }
 
-    // Step 9: Generate final document
+    // Step 10: Generate final document
     logger.section('Generating Final Document');
     const finalDocument = generateFinalDocument(outline, generatedFiles, combinedCount, totalSections, partial);
 
-    // Step 10: Save final document
+    // Step 11: Save final document
     await writeTextFile('output/final-combined.md', finalDocument);
     logger.success('Saved output/final-combined.md');
 
-    // Step 11: Create run log
+    // Step 12: Create run log
     const result: FinalCombineRunResult = {
       success: true,
       checked_at: new Date().toISOString(),
@@ -318,10 +318,11 @@ export async function runFinalCombine(): Promise<FinalCombineRunResult> {
     await writeJSONFile('logs/final-combine-run.json', result);
     logger.success('Saved logs/final-combine-run.json');
 
-    // Step 12: Update workflow state
+    // Step 13: Update workflow state
     const { markFinalCombined } = await import('./state-manager');
     await markFinalCombined();
 
+    // Step 14: Display summary
     logger.section('Final Combination Completed');
     logger.info('');
     logger.success(`Final document generated successfully ✓`);
