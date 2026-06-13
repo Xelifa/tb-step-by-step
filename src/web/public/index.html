@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TB Step by Step</title>
-  <link rel="stylesheet" href="/styles.css?v=web-step2-outline-1">
+  <link rel="stylesheet" href="/styles.css?v=web-step2-confirm-1">
 </head>
 <body>
   <div class="page-shell">
@@ -176,6 +176,20 @@
           <p id="step2-outline-result" class="inline-result"></p>
         </section>
 
+        <section class="surface step2-confirm-panel">
+          <div class="section-heading stacked">
+            <div>
+              <p class="section-kicker">Step 2 Confirmation</p>
+              <h2>确认大纲</h2>
+            </div>
+            <p class="section-copy">确认 outline.md，后续章节撰写将按此大纲执行。需要 Step 2 outline 已生成。</p>
+          </div>
+          <div class="actions">
+            <button id="confirm-outline">Confirm Outline</button>
+          </div>
+          <p id="step2-confirm-result" class="inline-result"></p>
+        </section>
+
         <section class="surface instructions-panel">
           <div class="section-heading stacked">
             <div>
@@ -216,6 +230,6 @@ npm run final:combine</pre>
       </div>
     </main>
   </div>
-  <script defer src="/app.js?v=web-step2-outline-1"></script>
+  <script defer src="/app.js?v=web-step2-confirm-1"></script>
 </body>
 </html>

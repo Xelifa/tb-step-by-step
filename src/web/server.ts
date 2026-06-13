@@ -11,6 +11,7 @@ import {
 } from '../core/model-config-service';
 import { runStep1 } from '../core/step1-runner';
 import { runStep2Outline } from '../core/step2-outline-runner';
+import { markStep2OutlineConfirmed } from '../core/state-manager';
 
 const execFileAsync = promisify(execFile);
 const app = express();
@@ -442,6 +443,81 @@ app.post('/api/step2/outline', async (_request: Request, response: Response) => 
     response.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Step 2 outline execution failed'
+    });
+  }
+});
+
+app.post('/api/step2/confirm', async (_request: Request, response: Response) => {
+  try {
+    // Verify prerequisites
+    const state = await readJson<WorkflowState>(path.join(logsDir, 'workflow-state.json'));
+    if (!state?.model_test_passed) {
+      response.status(400).json({
+        success: false,
+        error: 'Model gate has not passed'
+      });
+      return;
+    }
+
+    if (!state?.new_prompt_generated) {
+      response.status(400).json({
+        success: false,
+        error: 'Step 1 has not completed'
+      });
+      return;
+    }
+
+    if (!state?.outline_generated) {
+      response.status(400).json({
+        success: false,
+        error: 'Step 2 outline has not been generated'
+      });
+      return;
+    }
+
+    // Check if outline file exists
+    const outlinePath = path.join(outputDir, 'outline.md');
+    try {
+      await fs.access(outlinePath);
+    } catch {
+      response.status(400).json({
+        success: false,
+        error: 'output/outline.md not found'
+      });
+      return;
+    }
+
+    // Check if already confirmed
+    if (state.outline_confirmed) {
+      response.json({
+        success: true,
+        message: 'Outline already confirmed'
+      });
+      return;
+    }
+
+    // Mark as confirmed
+    await markStep2OutlineConfirmed();
+
+    // Write confirmation log
+    const confirmLog = {
+      success: true,
+      confirmed: true,
+      checked_at: new Date().toISOString(),
+      outline_file: 'output/outline.md',
+      mock_used: false
+    };
+
+    await writeJson(path.join(logsDir, 'step2-confirm-run.json'), confirmLog);
+
+    response.json({
+      success: true,
+      message: 'Outline confirmed successfully'
+    });
+  } catch (error) {
+    response.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Step 2 confirmation failed'
     });
   }
 });

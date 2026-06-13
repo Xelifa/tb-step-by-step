@@ -93,6 +93,7 @@ body {
 .upload-panel,
 .step1-panel,
 .step2-outline-panel,
+.step2-confirm-panel,
 .instructions-panel,
 .files-panel,
 .viewer-panel {
@@ -178,6 +179,7 @@ body {
 .upload-panel,
 .step1-panel,
 .step2-outline-panel,
+.step2-confirm-panel,
 .instructions-panel {
   grid-column: span 6;
 }
@@ -189,6 +191,7 @@ body {
 .upload-panel,
 .step1-panel,
 .step2-outline-panel,
+.step2-confirm-panel,
 .instructions-panel,
 .files-panel,
 .viewer-panel {
@@ -513,6 +516,7 @@ input[type="file"]::file-selector-button {
   .upload-panel,
   .step1-panel,
   .step2-outline-panel,
+  .step2-confirm-panel,
   .instructions-panel {
     grid-column: span 12;
   }
@@ -532,6 +536,7 @@ input[type="file"]::file-selector-button {
   .upload-panel,
   .step1-panel,
   .step2-outline-panel,
+  .step2-confirm-panel,
   .instructions-panel,
   .files-panel,
   .viewer-panel {

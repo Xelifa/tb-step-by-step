@@ -6,6 +6,7 @@ const uploadResult = document.querySelector('#upload-result');
 const resetResult = document.querySelector('#reset-result');
 const step1Result = document.querySelector('#step1-result');
 const step2OutlineResult = document.querySelector('#step2-outline-result');
+const step2ConfirmResult = document.querySelector('#step2-confirm-result');
 const viewer = document.querySelector('#viewer');
 const viewerTitle = document.querySelector('#viewer-title');
 const modelConfigStatus = document.querySelector('#model-config-status');
@@ -22,6 +23,7 @@ const modelMaxTokensInput = document.querySelector('#model-max-tokens');
 const modelTimeoutSecondsInput = document.querySelector('#model-timeout-seconds');
 const runStep1Button = document.querySelector('#run-step1');
 const runStep2OutlineButton = document.querySelector('#run-step2-outline');
+const confirmOutlineButton = document.querySelector('#confirm-outline');
 
 const providerDefaults = {
   openai: {
@@ -108,6 +110,12 @@ async function loadStatus() {
   const step2OutlineNotComplete = data.summary.step2_outline === 'pending';
 
   runStep2OutlineButton.style.display = modelGatePassed && step1Completed && step2OutlineNotComplete ? 'inline-block' : 'none';
+
+  // Show/hide Confirm Outline button based on status
+  const step2OutlineCompleted = data.summary.step2_outline === 'completed';
+  const step2ConfirmNotComplete = data.summary.step2_confirm === 'pending';
+
+  confirmOutlineButton.style.display = modelGatePassed && step2OutlineCompleted && step2ConfirmNotComplete ? 'inline-block' : 'none';
 }
 
 function applyProviderDefaults(provider) {
@@ -318,6 +326,27 @@ runStep2OutlineButton.addEventListener('click', async () => {
     step2OutlineResult.textContent = error.message;
   } finally {
     runStep2OutlineButton.disabled = false;
+  }
+});
+
+confirmOutlineButton.addEventListener('click', async () => {
+  const confirmed = window.confirm('Please confirm that you have reviewed and approved output/outline.md. Future section writing will follow this outline.');
+
+  if (!confirmed) {
+    return;
+  }
+
+  confirmOutlineButton.disabled = true;
+  step2ConfirmResult.textContent = 'Confirming outline...';
+
+  try {
+    const data = await request('/api/step2/confirm', { method: 'POST' });
+    step2ConfirmResult.textContent = data.success ? 'Outline confirmed successfully' : `Confirmation failed: ${data.error || 'Unknown error'}`;
+    await loadStatus();
+  } catch (error) {
+    step2ConfirmResult.textContent = error.message;
+  } finally {
+    confirmOutlineButton.disabled = false;
   }
 });
 
