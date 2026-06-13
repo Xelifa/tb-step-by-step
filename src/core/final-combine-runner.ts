@@ -202,3 +202,157 @@ function generateFinalDocument(
 
   return document;
 }
+
+/**
+ * Main final combine runner
+ */
+export async function runFinalCombine(): Promise<FinalCombineRunResult> {
+  try {
+    // Load environment
+    await loadEnvFile();
+
+    // Step 1: Verify model gate passed
+    logger.section('Verifying Model Gate');
+    const gatePassed = await isModelGatePassed();
+
+    if (!gatePassed) {
+      throw new Error('Model gate has not passed. Please run: npm run config');
+    }
+    logger.success('Model gate verified ✓');
+
+    // Step 2: Verify Step 1 completed
+    logger.section('Verifying Step 1 Completion');
+    const step1State = await readJSONFile<{ new_prompt_generated: boolean }>('logs/workflow-state.json');
+    if (!step1State || !step1State.new_prompt_generated) {
+      throw new Error('Step 1 has not completed. Please run: npm run step1');
+    }
+    logger.success('Step 1 completion verified ✓');
+
+    // Step 3: Verify Step 2 outline generated
+    logger.section('Verifying Step 2 Outline Generation');
+    const step2State = await readJSONFile<{ outline_generated: boolean }>('logs/workflow-state.json');
+    if (!step2State || !step2State.outline_generated) {
+      throw new Error('Step 2 outline has not been generated. Please run: npm run step2:outline');
+    }
+    logger.success('Step 2 outline generation verified ✓');
+
+    // Step 4: Verify Step 2 outline confirmed
+    logger.section('Verifying Step 2 Outline Confirmation');
+    const confirmState = await readJSONFile<{ outline_confirmed: boolean }>('logs/workflow-state.json');
+    if (!confirmState || !confirmState.outline_confirmed) {
+      throw new Error('Step 2 outline has not been confirmed. Please run: npm run step2:confirm');
+    }
+    logger.success('Step 2 outline confirmation verified ✓');
+
+    // Step 5: Read input files
+    logger.section('Reading Input Files');
+    const { workflowState, outline } = await readCombineInputFiles();
+    logger.success('Input files loaded ✓');
+
+    // Step 6: Get generated section files
+    logger.section('Checking Generated Sections');
+    const generatedFiles = getGeneratedSectionFiles();
+    logger.info(`Found ${generatedFiles.length} generated section files`);
+
+    // Step 7: Check section completion
+    const { missingSections, missingFilenames, allComplete } = checkSectionCompletion(outline, generatedFiles);
+
+    const totalSections = outline.sections.length;
+    const combinedCount = totalSections - missingSections.length;
+    const missingCount = missingSections.length;
+
+    let partial = false;
+
+    // Step 8: Handle missing sections
+    if (!allComplete) {
+      const proceed = await promptPartialCombine(missingSections);
+
+      if (!proceed) {
+        // User chose not to continue
+        logger.info('');
+        logger.info('Final combination cancelled.');
+        logger.info('Please generate missing sections first: npm run step2:section');
+
+        const result: FinalCombineRunResult = {
+          success: true,
+          checked_at: new Date().toISOString(),
+          total_sections: totalSections,
+          combined_count: 0,
+          missing_count: missingCount,
+          missing_sections: missingSections,
+          partial: false,
+          output_file: '',
+          mock_used: false
+        };
+
+        await writeJSONFile('logs/final-combine-run.json', result);
+        logger.success('Saved logs/final-combine-run.json');
+
+        return result;
+      }
+
+      partial = true;
+    }
+
+    // Step 9: Generate final document
+    logger.section('Generating Final Document');
+    const finalDocument = generateFinalDocument(outline, generatedFiles, combinedCount, totalSections, partial);
+
+    // Step 10: Save final document
+    await writeTextFile('output/final-combined.md', finalDocument);
+    logger.success('Saved output/final-combined.md');
+
+    // Step 11: Create run log
+    const result: FinalCombineRunResult = {
+      success: true,
+      checked_at: new Date().toISOString(),
+      total_sections: totalSections,
+      combined_count: combinedCount,
+      missing_count: missingCount,
+      missing_sections: missingSections,
+      partial,
+      output_file: 'output/final-combined.md',
+      mock_used: false
+    };
+
+    await writeJSONFile('logs/final-combine-run.json', result);
+    logger.success('Saved logs/final-combine-run.json');
+
+    // Step 12: Update workflow state
+    const { markFinalCombined } = await import('./state-manager');
+    await markFinalCombined();
+
+    logger.section('Final Combination Completed');
+    logger.info('');
+    logger.success(`Final document generated successfully ✓`);
+    logger.info(`  Total sections: ${totalSections}`);
+    logger.info(`  Combined: ${combinedCount}`);
+    if (partial) {
+      logger.warn(`  Missing: ${missingCount} (placeholders added)`);
+    }
+    logger.info('');
+    logger.info(`Output: output/final-combined.md`);
+
+    return result;
+
+  } catch (error) {
+    logger.error('Final combination failed');
+    logger.error(error instanceof Error ? error.message : 'Unknown error');
+
+    const result: FinalCombineRunResult = {
+      success: false,
+      checked_at: new Date().toISOString(),
+      total_sections: 0,
+      combined_count: 0,
+      missing_count: 0,
+      missing_sections: [],
+      partial: false,
+      output_file: '',
+      mock_used: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+
+    await writeJSONFile('logs/final-combine-run.json', result);
+    throw error;
+  }
+}
