@@ -228,7 +228,13 @@ async function getStatusSnapshot(): Promise<{
   const freshTenderFiles = modelGatePassed
     ? await listFreshFiles(inputDir, '.docx', session.last_reset_at)
     : [];
-  const hasTenderFile = freshTenderFiles.length > 0;
+
+  // Check if any .docx exists in input/ regardless of modification time
+  const allTenderFiles = await listFiles(inputDir, '.docx');
+  const hasTenderFile = allTenderFiles.length > 0;
+
+  // Override state.tender_file_loaded based on actual file existence
+  state.tender_file_loaded = hasTenderFile;
 
   const step1Generated = modelGatePassed
     && hasTenderFile
