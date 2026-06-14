@@ -94,6 +94,7 @@ body {
 .step1-panel,
 .step2-outline-panel,
 .step2-confirm-panel,
+.step2-section-panel,
 .instructions-panel,
 .files-panel,
 .viewer-panel {
@@ -192,6 +193,7 @@ body {
 .step1-panel,
 .step2-outline-panel,
 .step2-confirm-panel,
+.step2-section-panel,
 .instructions-panel,
 .files-panel,
 .viewer-panel {

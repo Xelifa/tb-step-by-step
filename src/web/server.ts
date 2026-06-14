@@ -12,6 +12,7 @@ import {
 import { runStep1 } from '../core/step1-runner';
 import { runStep2Outline } from '../core/step2-outline-runner';
 import { markStep2OutlineConfirmed } from '../core/state-manager';
+import { getAvailableSections, generateSectionByFilename } from '../core/web-section-runner';
 
 const execFileAsync = promisify(execFile);
 const app = express();
@@ -524,6 +525,54 @@ app.post('/api/step2/confirm', async (_request: Request, response: Response) => 
     response.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Step 2 confirmation failed'
+    });
+  }
+});
+
+app.get('/api/step2/sections', async (_request: Request, response: Response) => {
+  try {
+    const sections = await getAvailableSections();
+    response.json({
+      success: true,
+      sections: sections.map(s => ({
+        title: s.title,
+        level: s.level,
+        output_filename: s.output_filename,
+        needs_research: s.needs_research
+      }))
+    });
+  } catch (error) {
+    response.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get sections'
+    });
+  }
+});
+
+app.post('/api/step2/section', async (request: Request, response: Response) => {
+  try {
+    const sectionFilename = request.body?.section_filename;
+
+    if (!sectionFilename || typeof sectionFilename !== 'string') {
+      response.status(400).json({
+        success: false,
+        error: 'section_filename is required'
+      });
+      return;
+    }
+
+    const result = await generateSectionByFilename(sectionFilename);
+
+    response.json({
+      success: result.success,
+      message: result.success ? 'Section generated successfully' : 'Section generation failed',
+      error: result.error,
+      output_file: result.output_file
+    });
+  } catch (error) {
+    response.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Section generation failed'
     });
   }
 });

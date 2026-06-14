@@ -24,6 +24,9 @@ const modelTimeoutSecondsInput = document.querySelector('#model-timeout-seconds'
 const runStep1Button = document.querySelector('#run-step1');
 const runStep2OutlineButton = document.querySelector('#run-step2-outline');
 const confirmOutlineButton = document.querySelector('#confirm-outline');
+const sectionSelect = document.querySelector('#section-select');
+const generateSectionButton = document.querySelector('#generate-section');
+const step2SectionResult = document.querySelector('#step2-section-result');
 
 const providerDefaults = {
   openai: {
@@ -123,6 +126,20 @@ async function loadStatus() {
   const step2ConfirmNotComplete = data.summary.step2_confirm === 'pending';
 
   confirmOutlineButton.style.display = modelGatePassed && step2OutlineCompleted && step2ConfirmNotComplete ? 'inline-block' : 'none';
+
+  // Show/hide Section selector based on status
+  const step2ConfirmCompleted = data.summary.step2_confirm === 'completed';
+  const hasRemainingSections = data.completed_sections_count < data.total_sections_count;
+
+  if (step2ConfirmCompleted && hasRemainingSections) {
+    sectionSelect.disabled = false;
+    generateSectionButton.disabled = false;
+    await loadAvailableSections();
+  } else {
+    sectionSelect.disabled = true;
+    generateSectionButton.disabled = true;
+    sectionSelect.innerHTML = '<option value="">No sections available</option>';
+  }
 }
 
 function applyProviderDefaults(provider) {
@@ -354,6 +371,62 @@ confirmOutlineButton.addEventListener('click', async () => {
     step2ConfirmResult.textContent = error.message;
   } finally {
     confirmOutlineButton.disabled = false;
+  }
+});
+
+async function loadAvailableSections() {
+  try {
+    const data = await request('/api/step2/sections');
+    if (!data.success || !data.sections || data.sections.length === 0) {
+      sectionSelect.innerHTML = '<option value="">No sections available</option>';
+      return;
+    }
+
+    sectionSelect.innerHTML = '<option value="">Select a section...</option>';
+    data.sections.forEach(section => {
+      const option = document.createElement('option');
+      option.value = section.output_filename;
+      const indent = '  '.repeat(section.level - 1);
+      const prefix = section.needs_research ? '🔍 ' : '';
+      option.textContent = `${indent}${prefix}${section.title}`;
+      sectionSelect.appendChild(option);
+    });
+  } catch (error) {
+    sectionSelect.innerHTML = '<option value="">Error loading sections</option>';
+  }
+}
+
+generateSectionButton.addEventListener('click', async () => {
+  const sectionFilename = sectionSelect.value;
+
+  if (!sectionFilename) {
+    step2SectionResult.textContent = 'Please select a section first';
+    return;
+  }
+
+  generateSectionButton.disabled = true;
+  sectionSelect.disabled = true;
+  step2SectionResult.textContent = 'Generating section...';
+
+  try {
+    const data = await request('/api/step2/section', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ section_filename: sectionFilename })
+    });
+
+    step2SectionResult.textContent = data.success
+      ? `Section generated: ${data.output_file}`
+      : `Generation failed: ${data.error || 'Unknown error'}`;
+
+    if (data.success) {
+      await Promise.all([loadStatus(), loadFiles()]);
+    }
+  } catch (error) {
+    step2SectionResult.textContent = error.message;
+  } finally {
+    generateSectionButton.disabled = false;
+    sectionSelect.disabled = false;
   }
 });
 
