@@ -196,7 +196,7 @@ function buildSectionPrompt(section: OutlineSection, inputs: {
 
   return `你是一个专业的招投标文件撰写专家。
 
-请根据以下材料撰写指定章节。
+请根据以下材料撰写指定章节的完整正文。
 
 【章节信息】
 章节标题：${section.title}
@@ -218,11 +218,14 @@ ${inputs.step2Instructions}
 ${inputs.step3Instructions}
 
 【写作要求】
-1. 严格遵循 new-prompt.md 的指导
+1. 严格遵循 new-prompt.md 的指导，充分展开每个关键内容点
 2. 忠实于招标文件内容，不得编造
 3. 遇信息缺失时使用 \`[需补充：XXX]\` 占位
-4. 按大纲要求完整撰写本章节内容
-5. 逻辑清晰、语言专业、表达准确${researchPlaceholder}
+4. 采用正式招投标文件写作风格，语言专业、表达准确
+5. 本章节必须是完整的多段落正文，至少3-6个实质性段落
+6. 每个段落应有明确的主题句和充分展开的论述
+7. 内容要有深度和细节，不能只是简单概括或罗列要点
+8. 段落之间要有清晰的逻辑衔接，形成完整的论述体系${researchPlaceholder}
 
 请输出完整的章节正文内容（不要包含章节标题，直接开始正文）：`;
 }
@@ -253,6 +256,7 @@ async function callLLMForSection(
 
   logger.info(`Calling ${config.provider} API with model ${config.model}...`);
   logger.info(`Section: ${section.title}`);
+  logger.info(`Max tokens: ${config.max_tokens}`);
 
   // Call provider - this is the ONLY place API is called, no fallbacks
   const response = await provider.callAPI(

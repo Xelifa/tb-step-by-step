@@ -519,6 +519,7 @@ input[type="file"]::file-selector-button {
   .step1-panel,
   .step2-outline-panel,
   .step2-confirm-panel,
+  .step2-section-panel,
   .instructions-panel {
     grid-column: span 12;
   }
