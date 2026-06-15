@@ -185,6 +185,11 @@ body {
   grid-column: span 6;
 }
 
+.step2-section-panel,
+.instructions-panel {
+  grid-column: span 6;
+}
+
 .status-panel,
 .model-config-panel,
 .control-panel,
