@@ -451,12 +451,24 @@ a.file-button {
   font-size: 0.92rem;
 }
 
+.final-combine-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.final-combine-panel .section-heading {
+  margin-bottom: 0;
+}
+
 .final-combine-panel .actions {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-start;
   gap: 12px;
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 .final-combine-panel .actions button {
@@ -465,6 +477,16 @@ a.file-button {
   border-radius: 8px;
   align-self: center;
   white-space: nowrap;
+}
+
+.final-combine-panel .actions a.file-button {
+  align-self: center;
+  width: auto;
+  max-width: 100%;
+}
+
+.final-combine-panel #final-combine-result {
+  margin-top: 0;
 }
 
 button.small {
@@ -602,6 +624,11 @@ input[type="file"]::file-selector-button {
   .hero,
   .content-grid {
     grid-template-columns: 1fr;
+  }
+
+  .final-combine-panel .actions {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .control-panel,
