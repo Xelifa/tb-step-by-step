@@ -206,6 +206,54 @@ body {
   padding: 26px;
 }
 
+.final-combine-panel {
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 18px;
+}
+
+.final-combine-panel > * {
+  margin: 0;
+}
+
+.final-combine-panel .section-heading {
+  margin-bottom: 0;
+}
+
+.final-combine-panel .actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-top: 0;
+}
+
+.final-combine-panel .actions > * {
+  margin: 0;
+}
+
+.final-combine-panel .actions button {
+  padding: 8px 14px;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  align-self: center;
+  white-space: nowrap;
+}
+
+.final-combine-panel .actions a.file-button {
+  align-self: center;
+  width: auto;
+  max-width: 100%;
+}
+
+.final-combine-panel #final-combine-result {
+  margin-top: 0;
+}
+
 .section-heading,
 .actions,
 .upload-form,
@@ -449,44 +497,6 @@ a.file-button {
   text-decoration: none;
   font-weight: 600;
   font-size: 0.92rem;
-}
-
-.final-combine-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.final-combine-panel .section-heading {
-  margin-bottom: 0;
-}
-
-.final-combine-panel .actions {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-  margin-top: 0;
-}
-
-.final-combine-panel .actions button {
-  padding: 8px 14px;
-  font-size: 0.9rem;
-  border-radius: 8px;
-  align-self: center;
-  white-space: nowrap;
-}
-
-.final-combine-panel .actions a.file-button {
-  align-self: center;
-  width: auto;
-  max-width: 100%;
-}
-
-.final-combine-panel #final-combine-result {
-  margin-top: 0;
 }
 
 button.small {

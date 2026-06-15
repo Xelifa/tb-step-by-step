@@ -140,6 +140,8 @@ async function loadStatus() {
   // Show/hide Section selector based on status
   const step2ConfirmCompleted = data.summary.step2_confirm === 'completed';
   latestStep2Confirm = step2ConfirmCompleted;
+  latestTotalSections = data.total_sections_count;
+  latestCompletedSections = data.completed_sections_count;
   const hasRemainingSections = data.completed_sections_count < data.total_sections_count;
 
   if (step2ConfirmCompleted && hasRemainingSections) {
@@ -238,10 +240,12 @@ async function loadFiles() {
   // Enable final combine if outline confirmed + at least one section file exists
   const hasSection = outputs.files.some(f => typeof f.source === 'string' && f.source.startsWith('sections/'));
   finalCombineButton.disabled = !(hasSection && latestStep2Confirm);
-  finalDownloadLink.style.display = (outputs.files.some(f => f.name === 'final-combined.md')) ? 'inline-block' : 'none';
+  finalDownloadLink.style.display = (outputs.files.some(f => f.name === 'final-combined.md')) ? 'inline-flex' : 'none';
 }
 
 let latestStep2Confirm = false;
+let latestTotalSections = 0;
+let latestCompletedSections = 0;
 
 document.querySelector('#refresh-status').addEventListener('click', () => loadStatus().catch(showError));
 
@@ -626,6 +630,19 @@ generateSelectedSectionsButton.addEventListener('click', async () => {
 });
 
 finalCombineButton.addEventListener('click', async () => {
+  // Pre-flight: detect missing sections from latest status + files
+  const totalSections = latestTotalSections;
+  const completedSections = latestCompletedSections;
+  const isPartial = totalSections > 0 && completedSections < totalSections;
+
+  if (isPartial) {
+    const proceed = window.confirm('Some sections are missing. Combine completed sections only?');
+    if (!proceed) {
+      finalCombineResult.textContent = 'Combine cancelled.';
+      return;
+    }
+  }
+
   finalCombineButton.disabled = true;
   finalCombineResult.textContent = 'Combining final document...';
 
@@ -635,21 +652,6 @@ finalCombineButton.addEventListener('click', async () => {
     if (!data.success) {
       finalCombineResult.textContent = `Combine failed: ${data.error || 'Unknown error'}`;
       return;
-    }
-
-    // File has been written. If sections are missing, give the user a chance to view/acknowledge.
-    if (data.missing_sections && data.missing_sections.length > 0) {
-      const proceed = window.confirm(
-        `Some sections are missing. Combine completed sections only?\n\n` +
-        `Combined: ${data.combined_sections}/${data.total_sections}\n` +
-        `Placeholders will be inserted for ${data.missing_sections.length} missing section(s).`
-      );
-      if (!proceed) {
-        finalCombineResult.textContent =
-          `Combined ${data.combined_sections}/${data.total_sections} (with placeholders) — kept ${data.output_file}`;
-        await Promise.all([loadStatus(), loadFiles()]);
-        return;
-      }
     }
 
     finalCombineResult.textContent =
