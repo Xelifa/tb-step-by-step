@@ -37,6 +37,7 @@ const clearAllSectionsButton = document.querySelector('#clear-all-sections');
 const finalCombineButton = document.querySelector('#final-combine-button');
 const finalCombineResult = document.querySelector('#final-combine-result');
 const finalDownloadLink = document.querySelector('#final-download-link');
+const finalDownloadDocxLink = document.querySelector('#final-download-docx-link');
 
 const providerDefaults = {
   openai: {
@@ -240,7 +241,9 @@ async function loadFiles() {
   // Enable final combine if outline confirmed + at least one section file exists
   const hasSection = outputs.files.some(f => typeof f.source === 'string' && f.source.startsWith('sections/'));
   finalCombineButton.disabled = !(hasSection && latestStep2Confirm);
-  finalDownloadLink.style.display = (outputs.files.some(f => f.name === 'final-combined.md')) ? 'inline-flex' : 'none';
+  const showFinalDownload = outputs.files.some(f => f.name === 'final-combined.md');
+  finalDownloadLink.style.display = showFinalDownload ? 'inline-flex' : 'none';
+  finalDownloadDocxLink.style.display = showFinalDownload ? 'inline-flex' : 'none';
 }
 
 let latestStep2Confirm = false;

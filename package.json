@@ -39,6 +39,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "docx": "^9.7.1",
     "dotenv": "^16.4.0",
     "express": "^5.2.1",
     "inquirer": "^8.2.6",

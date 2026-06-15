@@ -16,6 +16,7 @@ import { getAvailableSections, generateSectionByFilename } from '../core/web-sec
 import { startBatchGeneration, getBatchGenerationProgress } from '../core/batch-section-generator';
 import { startSelectedGeneration, getSelectedGenerationProgress } from '../core/selected-section-generator';
 import { webFinalCombine } from '../core/web-final-combine';
+import { markdownToDocx, Packer } from '../core/markdown-to-docx';
 
 const execFileAsync = promisify(execFile);
 const app = express();
@@ -667,6 +668,30 @@ app.get('/api/final/download', async (_request: Request, response: Response) => 
       return;
     }
     response.status(500).json({ error: error instanceof Error ? error.message : 'Download failed' });
+  }
+});
+
+app.get('/api/final/download-docx', async (_request: Request, response: Response) => {
+  try {
+    const session = await readDashboardSession();
+    const filePath = path.join(outputDir, 'final-combined.md');
+    if (!await fileModifiedAfter(filePath, session.last_reset_at)) {
+      response.status(404).json({ error: 'final-combined.md not found' });
+      return;
+    }
+    const markdown = await fs.readFile(filePath, 'utf8');
+    const doc = markdownToDocx(markdown);
+    const buffer = await Packer.toBuffer(doc);
+    response.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    response.setHeader('Content-Disposition', 'attachment; filename="final-combined.docx"');
+    response.setHeader('Content-Length', String(buffer.length));
+    response.send(buffer);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      response.status(404).json({ error: 'final-combined.md not found' });
+      return;
+    }
+    response.status(500).json({ error: error instanceof Error ? error.message : 'DOCX download failed' });
   }
 });
 
