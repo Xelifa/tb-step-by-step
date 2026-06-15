@@ -27,6 +27,8 @@ const confirmOutlineButton = document.querySelector('#confirm-outline');
 const sectionSelect = document.querySelector('#section-select');
 const generateSectionButton = document.querySelector('#generate-section');
 const step2SectionResult = document.querySelector('#step2-section-result');
+const generateAllSectionsButton = document.querySelector('#generate-all-sections');
+const batchGenerationResult = document.querySelector('#batch-generation-result');
 
 const providerDefaults = {
   openai: {
@@ -134,10 +136,12 @@ async function loadStatus() {
   if (step2ConfirmCompleted && hasRemainingSections) {
     sectionSelect.disabled = false;
     generateSectionButton.disabled = false;
+    generateAllSectionsButton.disabled = false;
     await loadAvailableSections();
   } else {
     sectionSelect.disabled = true;
     generateSectionButton.disabled = true;
+    generateAllSectionsButton.disabled = true;
     sectionSelect.innerHTML = '<option value="">No sections available</option>';
   }
 }
@@ -427,6 +431,66 @@ generateSectionButton.addEventListener('click', async () => {
   } finally {
     generateSectionButton.disabled = false;
     sectionSelect.disabled = false;
+  }
+});
+
+generateAllSectionsButton.addEventListener('click', async () => {
+  const confirmed = window.confirm('This will generate all remaining sections sequentially. This may take several minutes. Continue?');
+
+  if (!confirmed) {
+    return;
+  }
+
+  generateAllSectionsButton.disabled = true;
+  generateSectionButton.disabled = true;
+  sectionSelect.disabled = true;
+  batchGenerationResult.textContent = 'Starting batch generation...';
+
+  try {
+    // Start batch generation
+    const startData = await request('/api/step2/sections/generate-all', { method: 'POST' });
+
+    if (!startData.success) {
+      batchGenerationResult.textContent = `Failed to start: ${startData.message}`;
+      return;
+    }
+
+    batchGenerationResult.textContent = 'Batch generation started. Polling progress...';
+
+    // Poll for progress
+    let completed = false;
+    let pollCount = 0;
+    const maxPolls = 3600; // 1 hour at 1 poll per second
+
+    while (!completed && pollCount < maxPolls) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      pollCount++;
+
+      const progress = await request('/api/step2/sections/generate-all/status');
+
+      if (progress.status === 'completed') {
+        batchGenerationResult.textContent = `Completed: ${progress.completed}/${progress.total} sections generated`;
+        completed = true;
+        await Promise.all([loadStatus(), loadFiles()]);
+      } else if (progress.status === 'failed') {
+        batchGenerationResult.textContent = `Failed at "${progress.failed_at}": ${progress.error || 'Unknown error'}`;
+        completed = true;
+      } else if (progress.status === 'running') {
+        const current = progress.completed + 1;
+        batchGenerationResult.textContent = `Generating ${current} / ${progress.total}: ${progress.current_section || '...'}`;
+      }
+    }
+
+    if (!completed) {
+      batchGenerationResult.textContent = 'Batch generation timed out (1 hour limit)';
+    }
+  } catch (error) {
+    batchGenerationResult.textContent = error.message;
+  } finally {
+    generateAllSectionsButton.disabled = false;
+    generateSectionButton.disabled = false;
+    sectionSelect.disabled = false;
+    await loadStatus(); // Refresh button states
   }
 });
 

@@ -13,6 +13,7 @@ import { runStep1 } from '../core/step1-runner';
 import { runStep2Outline } from '../core/step2-outline-runner';
 import { markStep2OutlineConfirmed } from '../core/state-manager';
 import { getAvailableSections, generateSectionByFilename } from '../core/web-section-runner';
+import { startBatchGeneration, getBatchGenerationProgress } from '../core/batch-section-generator';
 
 const execFileAsync = promisify(execFile);
 const app = express();
@@ -573,6 +574,30 @@ app.post('/api/step2/section', async (request: Request, response: Response) => {
     response.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Section generation failed'
+    });
+  }
+});
+
+app.post('/api/step2/sections/generate-all', async (_request: Request, response: Response) => {
+  try {
+    const result = await startBatchGeneration();
+    response.json(result);
+  } catch (error) {
+    response.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to start batch generation'
+    });
+  }
+});
+
+app.get('/api/step2/sections/generate-all/status', async (_request: Request, response: Response) => {
+  try {
+    const progress = await getBatchGenerationProgress();
+    response.json(progress);
+  } catch (error) {
+    response.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get batch generation status'
     });
   }
 });
