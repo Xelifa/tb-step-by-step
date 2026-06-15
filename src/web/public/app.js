@@ -73,6 +73,81 @@ function showError(error) {
 }
 
 // ============================================================
+// Toast / notification system
+// ============================================================
+
+const TOAST_TIMEOUTS = {
+  success: 4500,
+  info: 4500,
+  error: 8000
+};
+
+function getToastContainer() {
+  return document.querySelector('#toast-container');
+}
+
+function showToast(type, message) {
+  const safe = (typeof message === 'string' && message.length > 0)
+    ? message
+    : (type === 'error' ? '发生未知错误。' : '操作完成。');
+
+  // Defensive: never leak secrets in toasts
+  const clean = safe
+    .replace(/sk-[A-Za-z0-9_\-]+/g, '[redacted]')
+    .replace(/(api[_-]?key[\s=:]["']?)[^\s"',]+/gi, '$1[redacted]');
+
+  const container = getToastContainer();
+  if (!container) {
+    console[type === 'error' ? 'error' : 'log'](`[toast:${type}]`, clean);
+    return;
+  }
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+
+  const icon = document.createElement('span');
+  icon.className = 'toast-icon';
+  icon.textContent = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+  icon.setAttribute('aria-hidden', 'true');
+
+  const text = document.createElement('span');
+  text.className = 'toast-text';
+  text.textContent = clean;
+
+  const close = document.createElement('button');
+  close.className = 'toast-close';
+  close.type = 'button';
+  close.setAttribute('aria-label', 'Dismiss notification');
+  close.textContent = '×';
+  close.addEventListener('click', () => dismissToast(toast));
+
+  toast.append(icon, text, close);
+  container.appendChild(toast);
+
+  // Animate in
+  requestAnimationFrame(() => toast.classList.add('toast-visible'));
+
+  // Auto-dismiss
+  const timeout = TOAST_TIMEOUTS[type] ?? 5000;
+  setTimeout(() => dismissToast(toast), timeout);
+}
+
+function dismissToast(toast) {
+  if (!toast || !toast.parentNode) return;
+  toast.classList.remove('toast-visible');
+  toast.classList.add('toast-leaving');
+  setTimeout(() => {
+    if (toast.parentNode) toast.parentNode.removeChild(toast);
+  }, 220);
+}
+
+function toastFromError(prefix, error) {
+  const msg = error && error.message ? error.message : String(error);
+  showToast('error', `${prefix}: ${msg}`);
+}
+
+// ============================================================
 // Status fetching
 // ============================================================
 
@@ -403,6 +478,13 @@ const RENDERERS = {
         ${hasFinal ? '' : '<p class="result-line">请先回到上一步生成 final-combined.md。</p>'}
       </div>
     `;
+
+    if (hasFinal) {
+      const docx = body.querySelector('#export-docx');
+      const md = body.querySelector('#export-md');
+      docx?.addEventListener('click', () => showToast('info', 'Downloading final-combined.docx…'));
+      md?.addEventListener('click', () => showToast('info', 'Downloading final-combined.md…'));
+    }
   }
 };
 
@@ -476,9 +558,15 @@ function wireModelConfigForm() {
       });
       document.querySelector('#model-api-key-value').value = '';
       result.textContent = data.success ? 'Model test passed.' : `Model test failed: ${data.error || 'Unknown error'}`;
+      if (data.success) {
+        showToast('success', 'Model configuration saved and tested.');
+      } else {
+        showToast('error', `Model test failed: ${data.error || 'Unknown error'}`);
+      }
       await refreshAll();
     } catch (error) {
       result.textContent = error.message;
+      toastFromError('Model test failed', error);
     } finally {
       btn.disabled = false;
     }
@@ -504,9 +592,11 @@ function wireUploadForm() {
       body.append('tender', file);
       const data = await request('/api/upload', { method: 'POST', body });
       result.textContent = `已上传：${data.display_name || data.filename}`;
+      showToast('success', `Tender uploaded: ${data.display_name || data.filename}`);
       await refreshAll();
     } catch (error) {
       result.textContent = error.message;
+      toastFromError('Upload failed', error);
     } finally {
       btn.disabled = false;
     }
@@ -522,9 +612,12 @@ function wireStep1() {
     try {
       const data = await request('/api/step1/run', { method: 'POST' });
       result.textContent = data.success ? 'Step 1 完成。' : `Step 1 失败：${data.error || 'Unknown error'}`;
+      if (data.success) showToast('success', 'Step 1 completed successfully.');
+      else showToast('error', `Step 1 failed: ${data.error || 'Unknown error'}`);
       await refreshAll();
     } catch (error) {
       result.textContent = error.message;
+      toastFromError('Step 1 failed', error);
     } finally {
       btn.disabled = false;
     }
@@ -540,9 +633,12 @@ function wireStep2Outline() {
     try {
       const data = await request('/api/step2/outline', { method: 'POST' });
       result.textContent = data.success ? '大纲已生成。' : `生成失败：${data.error || 'Unknown error'}`;
+      if (data.success) showToast('success', 'Outline generated successfully.');
+      else showToast('error', `Outline generation failed: ${data.error || 'Unknown error'}`);
       await refreshAll();
     } catch (error) {
       result.textContent = error.message;
+      toastFromError('Outline generation failed', error);
     } finally {
       btn.disabled = false;
     }
@@ -559,9 +655,12 @@ function wireConfirmOutline() {
     try {
       const data = await request('/api/step2/confirm', { method: 'POST' });
       result.textContent = data.success ? '大纲已确认。' : `确认失败：${data.error || 'Unknown error'}`;
+      if (data.success) showToast('success', 'Outline confirmed.');
+      else showToast('error', `Confirmation failed: ${data.error || 'Unknown error'}`);
       await refreshAll();
     } catch (error) {
       result.textContent = error.message;
+      toastFromError('Outline confirmation failed', error);
     } finally {
       btn.disabled = false;
     }
@@ -592,9 +691,12 @@ function wireSections() {
         body: JSON.stringify({ section_filename: filename })
       });
       result.textContent = data.success ? `已生成 ${data.output_file}` : `失败：${data.error || 'Unknown error'}`;
+      if (data.success) showToast('success', `Section generated: ${data.output_file}`);
+      else showToast('error', `Section generation failed: ${data.error || 'Unknown error'}`);
       await refreshAll();
     } catch (error) {
       result.textContent = error.message;
+      toastFromError('Section generation failed', error);
     } finally {
       gen.disabled = false;
     }
@@ -618,10 +720,23 @@ function wireSections() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filenames: selected })
       });
-      if (!start.success) { selResult.textContent = `启动失败：${start.message}`; return; }
+      if (!start.success) {
+        selResult.textContent = `启动失败：${start.message}`;
+        showToast('error', `Could not start selected generation: ${start.message}`);
+        return;
+      }
+      showToast('info', `Generating ${selected.length} selected sections…`);
       await pollProgress('/api/step2/sections/generate-selected/status', selResult);
+      // Final toast based on the result line content
+      const finalText = selResult.textContent || '';
+      if (finalText.startsWith('完成')) {
+        showToast('success', finalText);
+      } else if (finalText.startsWith('失败') || finalText.startsWith('超时')) {
+        showToast('error', finalText);
+      }
     } catch (error) {
       selResult.textContent = error.message;
+      toastFromError('Selected generation failed', error);
     } finally {
       genSel.disabled = false; gen.disabled = false; genAll.disabled = false;
       await refreshAll();
@@ -634,10 +749,22 @@ function wireSections() {
     allResult.textContent = '启动中…';
     try {
       const start = await request('/api/step2/sections/generate-all', { method: 'POST' });
-      if (!start.success) { allResult.textContent = `启动失败：${start.message}`; return; }
+      if (!start.success) {
+        allResult.textContent = `启动失败：${start.message}`;
+        showToast('error', `Could not start batch generation: ${start.message}`);
+        return;
+      }
+      showToast('info', 'Batch section generation started…');
       await pollProgress('/api/step2/sections/generate-all/status', allResult);
+      const finalText = allResult.textContent || '';
+      if (finalText.startsWith('完成')) {
+        showToast('success', finalText);
+      } else if (finalText.startsWith('失败') || finalText.startsWith('超时')) {
+        showToast('error', finalText);
+      }
     } catch (error) {
       allResult.textContent = error.message;
+      toastFromError('Batch generation failed', error);
     } finally {
       genAll.disabled = false; genSel.disabled = false;
       await refreshAll();
@@ -736,9 +863,14 @@ function wireFinalCombine() {
       const data = await request('/api/final/combine', { method: 'POST' });
       if (!data.success) {
         result.textContent = `合并失败：${data.error || 'Unknown error'}`;
+        showToast('error', `Final combine failed: ${data.error || 'Unknown error'}`);
         return;
       }
       result.textContent = `已合并 ${data.combined_sections}/${data.total_sections} → ${data.output_file}`;
+      const placeholderSuffix = data.missing_sections && data.missing_sections.length
+        ? ` (${data.missing_sections.length} placeholders inserted)`
+        : '';
+      showToast('success', `Combined ${data.combined_sections}/${data.total_sections} sections → ${data.output_file}${placeholderSuffix}`);
       await refreshAll();
       // preview the result
       try {
@@ -748,6 +880,7 @@ function wireFinalCombine() {
       } catch (e) { /* ignore */ }
     } catch (error) {
       result.textContent = error.message;
+      toastFromError('Final combine failed', error);
     } finally {
       btn.disabled = false;
     }
@@ -780,8 +913,12 @@ async function resetRuntime(mode) {
     }
     updateStepNav();
     renderCurrentStep();
+    showToast('success', mode === 'all'
+      ? 'Everything reset. Model configuration cleared.'
+      : 'Workflow reset. Model configuration kept.');
   } catch (error) {
     showError(error);
+    toastFromError('Reset failed', error);
   }
 }
 
