@@ -3,286 +3,165 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TB Step by Step</title>
-  <link rel="stylesheet" href="/styles.css?v=web-docx-export-1">
+  <title>TB Step by Step — Guided Workflow</title>
+  <link rel="stylesheet" href="/styles.css?v=wizard-v1">
 </head>
 <body>
   <div class="page-shell">
-    <main class="app-shell">
-      <header class="hero surface">
-        <div class="hero-copy">
-          <p class="eyebrow">TB Step by Step Workflow</p>
-          <h1>本地投标工作流控制台</h1>
-          <p class="hero-description">围绕真实模型配置、固定步骤执行和文件化输出建立的本地仪表盘。页面仅封装已接受的 CLI 工作流，不改写核心逻辑。</p>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">TB</span>
+          <div class="brand-text">
+            <p class="brand-kicker">TB Step by Step</p>
+            <h1 class="brand-title">投标文件生成工作台</h1>
+          </div>
         </div>
-        <aside class="hero-summary">
-          <p class="summary-label">Current step</p>
-          <strong id="current-step" class="summary-value">加载中...</strong>
-          <p class="summary-label">Next command</p>
-          <code id="next-command" class="summary-command">加载中...</code>
-          <p class="helper-text">如果模型尚未重新配置，请先在终端运行 <code>npm run config</code>，或直接在下方完成配置。</p>
-        </aside>
+        <div class="topbar-actions">
+          <button id="reset-runtime" class="ghost small">Reset workflow</button>
+        </div>
       </header>
 
-      <div class="content-grid">
-        <section class="surface model-config-panel">
-          <div class="section-heading stacked">
-            <div>
-              <p class="section-kicker">Model Gate</p>
-              <h2>Configure Model API</h2>
-            </div>
-            <p class="section-copy">在浏览器中直接保存模型配置并执行真实连通性测试。API Key 仅在点击保存时发送到本地后端，不会回显或展示。</p>
-          </div>
-          <div class="model-config-status" id="model-config-status">正在读取当前配置状态...</div>
-          <form id="model-config-form" class="model-config-form">
-            <label class="form-field">
-              <span class="field-label">Provider</span>
-              <select id="model-provider" name="provider" required>
-                <option value="openai">openai</option>
-                <option value="deepseek">deepseek</option>
-                <option value="glm">glm</option>
-                <option value="claude-compatible">claude-compatible</option>
-                <option value="custom">custom</option>
-              </select>
-            </label>
-            <label class="form-field">
-              <span class="field-label">Base URL</span>
-              <input id="model-base-url" name="base_url" type="url" required>
-            </label>
-            <label class="form-field">
-              <span class="field-label">Model</span>
-              <input id="model-name" name="model" type="text" required>
-            </label>
-            <label class="form-field">
-              <span class="field-label">API Key Env Var</span>
-              <input id="model-api-key-env" name="api_key_env" type="text" required>
-            </label>
-            <label class="form-field">
-              <span class="field-label">API Key Value</span>
-              <input id="model-api-key-value" name="api_key_value" type="password" autocomplete="new-password" placeholder="仅保存时发送，不会显示已保存内容">
-            </label>
-            <label class="form-field">
-              <span class="field-label">Temperature</span>
-              <input id="model-temperature" name="temperature" type="number" min="0" max="2" step="0.1" required>
-            </label>
-            <label class="form-field">
-              <span class="field-label">Max Tokens</span>
-              <input id="model-max-tokens" name="max_tokens" type="number" min="1" step="1" required>
-            </label>
-            <label class="form-field">
-              <span class="field-label">Timeout Seconds</span>
-              <input id="model-timeout-seconds" name="timeout_seconds" type="number" min="1" step="1" required>
-            </label>
-            <div class="model-config-actions">
-              <button id="model-save-test" type="submit">Save &amp; Test</button>
-              <p id="model-config-result" class="inline-result">保存后将自动执行真实模型测试。</p>
-            </div>
-          </form>
-        </section>
+      <main class="wizard-grid">
+        <!-- Left sidebar: step navigation -->
+        <aside class="step-nav" aria-label="Workflow steps">
+          <ol id="step-nav-list" class="step-list">
+            <li data-step="model" class="step-item">
+              <span class="step-marker" aria-hidden="true"></span>
+              <div class="step-text">
+                <p class="step-num">Step 1</p>
+                <p class="step-label">配置模型</p>
+                <p class="step-state">Model Config</p>
+              </div>
+            </li>
+            <li data-step="upload" class="step-item">
+              <span class="step-marker" aria-hidden="true"></span>
+              <div class="step-text">
+                <p class="step-num">Step 2</p>
+                <p class="step-label">上传招标文件</p>
+                <p class="step-state">Upload Tender</p>
+              </div>
+            </li>
+            <li data-step="step1" class="step-item">
+              <span class="step-marker" aria-hidden="true"></span>
+              <div class="step-text">
+                <p class="step-num">Step 3</p>
+                <p class="step-label">生成 new-prompt</p>
+                <p class="step-state">Step 1</p>
+              </div>
+            </li>
+            <li data-step="outline" class="step-item">
+              <span class="step-marker" aria-hidden="true"></span>
+              <div class="step-text">
+                <p class="step-num">Step 4</p>
+                <p class="step-label">生成大纲</p>
+                <p class="step-state">Step 2 Outline</p>
+              </div>
+            </li>
+            <li data-step="confirm" class="step-item">
+              <span class="step-marker" aria-hidden="true"></span>
+              <div class="step-text">
+                <p class="step-num">Step 5</p>
+                <p class="step-label">确认大纲</p>
+                <p class="step-state">Confirm Outline</p>
+              </div>
+            </li>
+            <li data-step="sections" class="step-item">
+              <span class="step-marker" aria-hidden="true"></span>
+              <div class="step-text">
+                <p class="step-num">Step 6</p>
+                <p class="step-label">撰写章节</p>
+                <p class="step-state">Generate Sections</p>
+              </div>
+            </li>
+            <li data-step="combine" class="step-item">
+              <span class="step-marker" aria-hidden="true"></span>
+              <div class="step-text">
+                <p class="step-num">Step 7</p>
+                <p class="step-label">合并最终文档</p>
+                <p class="step-state">Final Combine</p>
+              </div>
+            </li>
+            <li data-step="export" class="step-item">
+              <span class="step-marker" aria-hidden="true"></span>
+              <div class="step-text">
+                <p class="step-num">Step 8</p>
+                <p class="step-label">导出</p>
+                <p class="step-state">Export</p>
+              </div>
+            </li>
+          </ol>
+        </aside>
 
-        <section class="surface status-panel">
-          <div class="section-heading">
-            <div>
-              <p class="section-kicker">Status Overview</p>
-              <h2>工作流状态</h2>
-            </div>
-            <button id="refresh-status" class="secondary">刷新</button>
+        <!-- Center: current step panel -->
+        <section class="step-panel" id="step-panel">
+          <div class="step-header">
+            <p class="step-eyebrow" id="step-eyebrow">Step 1 of 8</p>
+            <h2 class="step-title" id="step-title">模型配置</h2>
+            <p class="step-instruction" id="step-instruction">在开始撰写前，需要先配置并测试真实的模型 API。</p>
           </div>
-          <div id="status-cards" class="cards"></div>
-        </section>
-
-        <section class="surface control-panel">
-          <div class="section-heading stacked">
-            <div>
-              <p class="section-kicker">Project Reset</p>
-              <h2>New Project / Reset Runtime</h2>
-            </div>
-            <p class="section-copy">清空当前运行痕迹，回到新的项目起点。默认仅重置工作流文件，不暴露也不删除 <code>.env</code>。</p>
+          <div class="step-body" id="step-body">
+            <!-- step content is rendered here -->
           </div>
-          <div class="reset-panel">
-            <label class="reset-option">
-              <input type="radio" name="reset-mode" value="workflow" checked>
-              <span>Reset workflow only</span>
-            </label>
-            <label class="reset-option">
-              <input type="radio" name="reset-mode" value="all">
-              <span>Reset everything and start from model API configuration</span>
-            </label>
-          </div>
-          <div class="actions">
-            <button id="reset-runtime">New Project / Reset Runtime</button>
-          </div>
-          <p id="reset-result" class="inline-result"></p>
-        </section>
-
-        <section class="surface command-panel">
-          <div class="section-heading stacked">
-            <div>
-              <p class="section-kicker">Safe Commands</p>
-              <h2>安全命令</h2>
-            </div>
-            <p class="section-copy">仅运行固定白名单命令，不接受任何用户自定义 shell 输入。</p>
-          </div>
-          <div class="actions wrap">
-            <button data-command="workflow">npm run workflow</button>
-            <button data-command="step2-status">npm run step2:status</button>
-          </div>
-          <pre id="command-result">尚未运行命令。</pre>
-        </section>
-
-        <section class="surface upload-panel">
-          <div class="section-heading stacked">
-            <div>
-              <p class="section-kicker">Input Intake</p>
-              <h2>上传招标文件</h2>
-            </div>
-            <p class="section-copy">仅支持上传 `.docx` 到本地 `input/` 目录，供后续 Step 1 使用。</p>
-          </div>
-          <form id="upload-form" class="upload-form">
-            <label class="file-field" for="tender-file">
-              <span class="field-label">Tender file</span>
-              <input id="tender-file" name="tender" type="file" accept=".docx" required>
-            </label>
-            <button type="submit">上传到 input/</button>
-          </form>
-          <p id="upload-result" class="inline-result"></p>
-        </section>
-
-        <section class="surface step1-panel">
-          <div class="section-heading stacked">
-            <div>
-              <p class="section-kicker">Step 1 Execution</p>
-              <h2>运行 Step 1</h2>
-            </div>
-            <p class="section-copy">生成 new-prompt.md，需要模型配置已通过且已上传招标文件。</p>
-          </div>
-          <div class="actions">
-            <button id="run-step1">Run Step 1</button>
-          </div>
-          <p id="step1-result" class="inline-result"></p>
-        </section>
-
-        <section class="surface step2-outline-panel">
-          <div class="section-heading stacked">
-            <div>
-              <p class="section-kicker">Step 2 Outline Execution</p>
-              <h2>生成大纲</h2>
-            </div>
-            <p class="section-copy">生成 outline.md，需要 Step 1 已完成。</p>
-          </div>
-          <div class="actions">
-            <button id="run-step2-outline">Generate Outline</button>
-          </div>
-          <p id="step2-outline-result" class="inline-result"></p>
-        </section>
-
-        <section class="surface step2-confirm-panel">
-          <div class="section-heading stacked">
-            <div>
-              <p class="section-kicker">Step 2 Confirmation</p>
-              <h2>确认大纲</h2>
-            </div>
-            <p class="section-copy">确认 outline.md，后续章节撰写将按此大纲执行。需要 Step 2 outline 已生成。</p>
-          </div>
-          <div class="actions">
-            <button id="confirm-outline">Confirm Outline</button>
-          </div>
-          <p id="step2-confirm-result" class="inline-result"></p>
-        </section>
-
-        <section class="surface step2-section-panel">
-          <div class="section-heading stacked">
-            <div>
-              <p class="section-kicker">Step 2 Section Generation</p>
-              <h2>生成章节</h2>
-            </div>
-            <p class="section-copy">选择并生成单个章节。需要大纲已确认。</p>
-          </div>
-          <div class="form-field">
-            <label class="field-label" for="section-select">Select Single Section</label>
-            <select id="section-select" disabled>
-              <option value="">Loading sections...</option>
-            </select>
-          </div>
-          <div class="actions">
-            <button id="generate-section" disabled>Generate Selected Section</button>
-          </div>
-          <p id="step2-section-result" class="inline-result"></p>
-
-          <div class="form-field">
-            <span class="field-label">Select Multiple Sections</span>
-            <div class="checkbox-controls">
-              <button type="button" id="select-all-sections" class="secondary small">Select All</button>
-              <button type="button" id="clear-all-sections" class="secondary small">Clear</button>
-            </div>
-            <div id="sections-checkbox-list" class="checkbox-list" role="group" aria-label="Available sections">
-              <p class="empty-state">Loading sections...</p>
-            </div>
-          </div>
-          <div class="actions">
-            <button id="generate-selected-sections" disabled>Generate Selected Sections</button>
-            <button id="generate-all-sections" disabled>Generate All Remaining Sections</button>
-          </div>
-          <p id="selected-generation-result" class="inline-result"></p>
-          <p id="batch-generation-result" class="inline-result"></p>
-        </section>
-
-        <section class="surface final-combine-panel">
-          <div class="section-heading stacked">
-            <div>
-              <p class="section-kicker">Final Combine</p>
-              <h2>合并最终文档</h2>
-            </div>
-            <p class="section-copy">按大纲顺序合并所有已生成章节为最终正文。需要大纲已确认且至少存在一个章节文件。</p>
-          </div>
-          <div class="actions">
-            <button id="final-combine-button" disabled>Combine Final Document</button>
-            <a id="final-download-link" class="file-button" style="display:none" href="/api/final/download" download="final-combined.md">Download final-combined.md</a>
-            <a id="final-download-docx-link" class="file-button" style="display:none" href="/api/final/download-docx" download="final-combined.docx">Download final-combined.docx</a>
-          </div>
-          <p id="final-combine-result" class="inline-result"></p>
-        </section>
-
-        <section class="surface instructions-panel">
-          <div class="section-heading stacked">
-            <div>
-              <p class="section-kicker">Terminal Guidance</p>
-              <h2>交互命令</h2>
-            </div>
-            <p class="section-copy">以下交互步骤仍通过终端执行，Web UI 只负责显示状态和查看文件结果。</p>
-          </div>
-          <pre>npm run step1
-npm run step2:outline
-npm run step2:confirm
-npm run step2:section
-npm run final:combine</pre>
-        </section>
-
-        <section class="surface files-panel viewer-grid">
-          <div class="file-column">
-            <p class="section-kicker">Documents</p>
-            <h2>输出文件</h2>
-            <div id="output-list" class="file-list"></div>
-          </div>
-          <div class="file-column">
-            <p class="section-kicker">Safe Logs</p>
-            <h2>安全日志</h2>
-            <div id="log-list" class="file-list"></div>
+          <div class="step-footer">
+            <button id="step-back" class="ghost" disabled>← Back</button>
+            <button id="step-continue" class="primary" disabled>Continue →</button>
           </div>
         </section>
 
-        <section class="surface viewer-panel">
-          <div class="section-heading stacked">
-            <div>
-              <p class="section-kicker">Read Only Viewer</p>
-              <h2 id="viewer-title">只读查看器</h2>
-            </div>
+        <!-- Right sidebar: files and preview -->
+        <aside class="files-panel" aria-label="Project files">
+          <div class="files-header">
+            <h3>项目文件</h3>
+            <button id="refresh-status" class="ghost small" title="Refresh status">↻</button>
           </div>
-          <pre id="viewer">选择输出文件或日志进行查看。</pre>
-        </section>
-      </div>
-    </main>
+          <ul class="file-tree" id="file-tree">
+            <li class="file-row" data-file="input-tender">
+              <span class="file-icon">📄</span>
+              <span class="file-name">招标书 (.docx)</span>
+              <span class="file-status" data-state="pending">—</span>
+            </li>
+            <li class="file-row" data-file="new-prompt">
+              <span class="file-icon">📝</span>
+              <span class="file-name">new-prompt.md</span>
+              <span class="file-status" data-state="pending">—</span>
+            </li>
+            <li class="file-row" data-file="outline">
+              <span class="file-icon">📋</span>
+              <span class="file-name">outline.md</span>
+              <span class="file-status" data-state="pending">—</span>
+            </li>
+            <li class="file-row file-row-children" data-file="sections">
+              <span class="file-icon">📚</span>
+              <span class="file-name">sections/</span>
+              <span class="file-status" data-state="pending">0 / 0</span>
+            </li>
+            <li class="file-row" data-file="final-combined">
+              <span class="file-icon">📦</span>
+              <span class="file-name">final-combined.md</span>
+              <span class="file-status" data-state="pending">—</span>
+            </li>
+            <li class="file-row" data-file="final-docx">
+              <span class="file-icon">📥</span>
+              <span class="file-name">final-combined.docx</span>
+              <span class="file-status" data-state="pending">—</span>
+            </li>
+          </ul>
+
+          <details class="advanced">
+            <summary>Advanced / logs</summary>
+            <div id="log-list" class="log-list"></div>
+          </details>
+
+          <div class="preview-block">
+            <h3>Preview</h3>
+            <pre id="viewer" class="viewer">Select a file to preview.</pre>
+          </div>
+        </aside>
+      </main>
+    </div>
   </div>
-  <script defer src="/app.js?v=web-docx-export-1"></script>
+
+  <script defer src="/app.js?v=wizard-v1"></script>
 </body>
 </html>
