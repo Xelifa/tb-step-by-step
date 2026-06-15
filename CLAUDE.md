@@ -782,6 +782,31 @@ Step 1 已完成。
 
 ---
 
+## 18. 内容生成测试与验证
+
+任何涉及正文（section、chapter、final combined）生成、改写、合并或导出的 patch，在提交前必须运行：
+
+```bash
+npm run test:sections
+```
+
+该命令会：
+
+1. 扫描 `output/sections/*.md` 全部章节文件。
+2. 检测开头 / 结尾是否包含 AI 风格的禁语（`好的，我已经`、`我将`、`以下是`、`如需进一步` 等）。
+3. 若发现违规，输出文件名、命中位置（`start` / `end`）、匹配短语和原文片段，并以 exit code `1` 失败。
+
+规则：
+
+* `npm run test:sections` 必须在每次内容生成相关 patch 之前运行；不得跳过。
+* 若测试失败，必须先修正生成逻辑（prompt、sanitizer、保存路径），再重跑至通过。
+* 新增 / 调整 sanitizer 或 validator 时，需同步更新 `src/core/section-sanitizer.ts` 与 `src/commands/test-sections.ts` 的测试覆盖。
+* 不允许通过删除测试文件、跳过 `pretest:sections` 钩子、或在测试中写入空 fixture 来规避失败。
+
+---
+
+
+
 ## Writing Guidelines
 
 ### Chapter Writing Rules
