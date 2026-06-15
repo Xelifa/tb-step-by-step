@@ -14,6 +14,7 @@ import { runStep2Outline } from '../core/step2-outline-runner';
 import { markStep2OutlineConfirmed } from '../core/state-manager';
 import { getAvailableSections, generateSectionByFilename } from '../core/web-section-runner';
 import { startBatchGeneration, getBatchGenerationProgress } from '../core/batch-section-generator';
+import { startSelectedGeneration, getSelectedGenerationProgress } from '../core/selected-section-generator';
 
 const execFileAsync = promisify(execFile);
 const app = express();
@@ -598,6 +599,39 @@ app.get('/api/step2/sections/generate-all/status', async (_request: Request, res
     response.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get batch generation status'
+    });
+  }
+});
+
+app.post('/api/step2/sections/generate-selected', async (request: Request, response: Response) => {
+  try {
+    const filenames = request.body?.filenames;
+    if (!Array.isArray(filenames) || filenames.length === 0) {
+      response.status(400).json({ success: false, message: 'filenames array is required' });
+      return;
+    }
+    if (!filenames.every(f => typeof f === 'string' && f.length > 0 && f.length < 500)) {
+      response.status(400).json({ success: false, message: 'Invalid filenames' });
+      return;
+    }
+    const result = await startSelectedGeneration(filenames);
+    response.json(result);
+  } catch (error) {
+    response.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to start selected generation'
+    });
+  }
+});
+
+app.get('/api/step2/sections/generate-selected/status', async (_request: Request, response: Response) => {
+  try {
+    const progress = await getSelectedGenerationProgress();
+    response.json(progress);
+  } catch (error) {
+    response.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get selected generation status'
     });
   }
 });

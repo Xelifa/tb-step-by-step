@@ -1,5 +1,10 @@
 # TB Step by Step｜Claude Code 项目总控说明
 
+## Project Context
+- Primary languages: TypeScript (55 files), Python (65 files). Large Markdown output (772 files) for writing projects.
+- Key tools: Playwright MCP for browser testing, Bash for build/run commands.
+- Common workflows: chapter writing with strict outlines, Web UI development with multi-step workflows, Excel-to-web conversion.
+
 ## 0. 项目定位
 
 本项目不是自主 Agent，也不是让模型自由判断任务路径的智能体系统，而是一个 **固定步骤、文件驱动、人控确认的招投标写作工作流工具** 。
@@ -18,6 +23,7 @@
 7. 缺失信息必须使用 `[需补充：XXX]` 占位，不得编造。
 8. Step 1 生成 `new-prompt.md` 前，必须再次校核模型与 API 是否真实可用。
 
+---
 ---
 
 ## 1. 第一门禁：模型供应商与 API 配置
@@ -773,3 +779,26 @@ Step 1 已完成。
 5. 输出文件可追溯；
 6. 内容不编造；
 7. 工作流不跳步。
+
+---
+
+## Writing Guidelines
+
+### Chapter Writing Rules
+- Always adhere strictly to the provided outline; do NOT introduce characters, plot points, or hooks ahead of schedule.
+- Minimum word count per chapter: [specify target]. If output falls short, rewrite the entire chapter until the count is met.
+- Avoid duplicate paragraphs within a single chapter.
+- Format: [specify desired format, e.g. Markdown with specific section headers].
+
+---
+
+## Development Guidelines
+
+### Debugging & Fixing
+- When fixing UI issues, identify the root cause first (inspect HTML structure, data flow, or configuration) before applying CSS workarounds or overlay hacks.
+- Verify each fix explicitly before moving to the next issue. If a fix doesn't work after 2 attempts, escalate to structural investigation.
+- For packaging/distribution tasks, confirm the exact deliverable format needed (e.g., zip of source vs. compiled build) before executing.
+
+### API & Integration Rules
+- When integrating with external APIs, never discard real API responses in favor of hardcoded mock data. Always surface actual API output.
+- Before starting any session that depends on external API access, verify the API is reachable and credentials are valid.

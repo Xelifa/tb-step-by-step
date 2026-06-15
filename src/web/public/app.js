@@ -29,6 +29,9 @@ const generateSectionButton = document.querySelector('#generate-section');
 const step2SectionResult = document.querySelector('#step2-section-result');
 const generateAllSectionsButton = document.querySelector('#generate-all-sections');
 const batchGenerationResult = document.querySelector('#batch-generation-result');
+const sectionsMultiSelect = document.querySelector('#sections-multi-select');
+const generateSelectedSectionsButton = document.querySelector('#generate-selected-sections');
+const selectedGenerationResult = document.querySelector('#selected-generation-result');
 
 const providerDefaults = {
   openai: {
@@ -137,12 +140,17 @@ async function loadStatus() {
     sectionSelect.disabled = false;
     generateSectionButton.disabled = false;
     generateAllSectionsButton.disabled = false;
+    sectionsMultiSelect.disabled = false;
+    generateSelectedSectionsButton.disabled = false;
     await loadAvailableSections();
   } else {
     sectionSelect.disabled = true;
     generateSectionButton.disabled = true;
     generateAllSectionsButton.disabled = true;
+    sectionsMultiSelect.disabled = true;
+    generateSelectedSectionsButton.disabled = true;
     sectionSelect.innerHTML = '<option value="">No sections available</option>';
+    sectionsMultiSelect.innerHTML = '<option value="">No sections available</option>';
   }
 }
 
@@ -383,20 +391,30 @@ async function loadAvailableSections() {
     const data = await request('/api/step2/sections');
     if (!data.success || !data.sections || data.sections.length === 0) {
       sectionSelect.innerHTML = '<option value="">No sections available</option>';
+      sectionsMultiSelect.innerHTML = '<option value="">No sections available</option>';
       return;
     }
 
     sectionSelect.innerHTML = '<option value="">Select a section...</option>';
+    sectionsMultiSelect.innerHTML = '';
     data.sections.forEach(section => {
-      const option = document.createElement('option');
-      option.value = section.output_filename;
       const indent = '  '.repeat(section.level - 1);
       const prefix = section.needs_research ? '🔍 ' : '';
-      option.textContent = `${indent}${prefix}${section.title}`;
-      sectionSelect.appendChild(option);
+      const label = `${indent}${prefix}${section.title}`;
+
+      const single = document.createElement('option');
+      single.value = section.output_filename;
+      single.textContent = label;
+      sectionSelect.appendChild(single);
+
+      const multi = document.createElement('option');
+      multi.value = section.output_filename;
+      multi.textContent = label;
+      sectionsMultiSelect.appendChild(multi);
     });
   } catch (error) {
     sectionSelect.innerHTML = '<option value="">Error loading sections</option>';
+    sectionsMultiSelect.innerHTML = '<option value="">Error loading sections</option>';
   }
 }
 
@@ -491,6 +509,80 @@ generateAllSectionsButton.addEventListener('click', async () => {
     generateSectionButton.disabled = false;
     sectionSelect.disabled = false;
     await loadStatus(); // Refresh button states
+  }
+});
+
+generateSelectedSectionsButton.addEventListener('click', async () => {
+  const selected = Array.from(sectionsMultiSelect.selectedOptions)
+    .map(opt => opt.value)
+    .filter(v => v.length > 0);
+
+  if (selected.length === 0) {
+    selectedGenerationResult.textContent = 'Please select at least one section';
+    return;
+  }
+
+  const confirmed = window.confirm(`This will generate ${selected.length} selected sections sequentially in outline order. Continue?`);
+  if (!confirmed) {
+    return;
+  }
+
+  generateSelectedSectionsButton.disabled = true;
+  generateAllSectionsButton.disabled = true;
+  generateSectionButton.disabled = true;
+  sectionsMultiSelect.disabled = true;
+  sectionSelect.disabled = true;
+  selectedGenerationResult.textContent = 'Starting selected generation...';
+
+  try {
+    const startData = await request('/api/step2/sections/generate-selected', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filenames: selected })
+    });
+
+    if (!startData.success) {
+      selectedGenerationResult.textContent = `Failed to start: ${startData.message}`;
+      return;
+    }
+
+    selectedGenerationResult.textContent = 'Selected generation started. Polling progress...';
+
+    let completed = false;
+    let pollCount = 0;
+    const maxPolls = 3600;
+
+    while (!completed && pollCount < maxPolls) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      pollCount++;
+
+      const progress = await request('/api/step2/sections/generate-selected/status');
+
+      if (progress.status === 'completed') {
+        selectedGenerationResult.textContent = `Completed: ${progress.completed}/${progress.total} sections generated`;
+        completed = true;
+        await Promise.all([loadStatus(), loadFiles()]);
+      } else if (progress.status === 'failed') {
+        selectedGenerationResult.textContent = `Failed at "${progress.failed_at}": ${progress.error || 'Unknown error'}`;
+        completed = true;
+      } else if (progress.status === 'running') {
+        const current = progress.completed + 1;
+        selectedGenerationResult.textContent = `Generating ${current} / ${progress.total}: ${progress.current_section || '...'}`;
+      }
+    }
+
+    if (!completed) {
+      selectedGenerationResult.textContent = 'Selected generation timed out (1 hour limit)';
+    }
+  } catch (error) {
+    selectedGenerationResult.textContent = error.message;
+  } finally {
+    generateSelectedSectionsButton.disabled = false;
+    generateAllSectionsButton.disabled = false;
+    generateSectionButton.disabled = false;
+    sectionsMultiSelect.disabled = false;
+    sectionSelect.disabled = false;
+    await loadStatus();
   }
 });
 

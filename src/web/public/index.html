@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TB Step by Step</title>
-  <link rel="stylesheet" href="/styles.css?v=web-step2-confirm-fix-1">
+  <link rel="stylesheet" href="/styles.css?v=web-selected-section-1">
 </head>
 <body>
   <div class="page-shell">
@@ -199,16 +199,27 @@
             <p class="section-copy">选择并生成单个章节。需要大纲已确认。</p>
           </div>
           <div class="form-field">
-            <label class="field-label" for="section-select">Select Section</label>
+            <label class="field-label" for="section-select">Select Single Section</label>
             <select id="section-select" disabled>
               <option value="">Loading sections...</option>
             </select>
           </div>
           <div class="actions">
             <button id="generate-section" disabled>Generate Selected Section</button>
-            <button id="generate-all-sections" disabled>Generate All Remaining Sections</button>
           </div>
           <p id="step2-section-result" class="inline-result"></p>
+
+          <div class="form-field">
+            <label class="field-label" for="sections-multi-select">Select Multiple Sections (Ctrl/Cmd+Click)</label>
+            <select id="sections-multi-select" multiple size="6" disabled>
+              <option value="">Loading sections...</option>
+            </select>
+          </div>
+          <div class="actions">
+            <button id="generate-selected-sections" disabled>Generate Selected Sections</button>
+            <button id="generate-all-sections" disabled>Generate All Remaining Sections</button>
+          </div>
+          <p id="selected-generation-result" class="inline-result"></p>
           <p id="batch-generation-result" class="inline-result"></p>
         </section>
 
@@ -252,6 +263,6 @@ npm run final:combine</pre>
       </div>
     </main>
   </div>
-  <script defer src="/app.js?v=web-step2-confirm-fix-1"></script>
+  <script defer src="/app.js?v=web-selected-section-1"></script>
 </body>
 </html>
