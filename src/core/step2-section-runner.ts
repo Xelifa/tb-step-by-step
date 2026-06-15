@@ -2,6 +2,7 @@ import inquirer from 'inquirer';
 import { logger } from '../utils/logger';
 import { readJSONFile, readTextFile, writeJSONFile, writeTextFile } from '../utils/file';
 import { loadEnvFile, getEnvVar } from '../utils/env';
+import { sanitizeSectionContent } from './section-sanitizer';
 import { ModelConfig, ProviderType } from '../types/config';
 import { Outline, OutlineSection } from '../types/step2';
 import { getProvider } from './provider';
@@ -391,7 +392,8 @@ export async function runStep2Section(): Promise<Step2SectionRunResult> {
     ensureSectionsDirectory();
 
     const outputPath = path.join('output/sections', selectedSection.output_filename);
-    await writeTextFile(outputPath, sectionContent);
+    const cleaned = sanitizeSectionContent(sectionContent);
+    await writeTextFile(outputPath, cleaned);
     logger.success(`Saved ${outputPath}`);
 
     // Step 12: Mark section as completed

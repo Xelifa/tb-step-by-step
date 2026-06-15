@@ -6,6 +6,7 @@ import { Outline, OutlineSection } from '../types/step2';
 import { getProvider } from './provider';
 import { isModelGatePassed, markSectionStarted, markSectionCompleted } from './state-manager';
 import { Step2SectionRunResult } from '../types/step2-section';
+import { sanitizeSectionContent } from './section-sanitizer';
 import fs from 'fs';
 import path from 'path';
 
@@ -196,7 +197,8 @@ ${step3Instructions}
     }
 
     const outputPath = path.join(sectionsDir, sectionFilename);
-    await writeTextFile(outputPath, sectionContent);
+    const cleaned = sanitizeSectionContent(sectionContent);
+    await writeTextFile(outputPath, cleaned);
     logger.success(`Saved ${outputPath}`);
 
     // Mark section completed

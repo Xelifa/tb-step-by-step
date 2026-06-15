@@ -10,6 +10,8 @@
     "preconfig": "npm run build",
     "test:model": "node dist/commands/test-model.js",
     "pretest:model": "npm run build",
+    "test:sections": "node dist/commands/test-sections.js",
+    "pretest:sections": "npm run build",
     "step1": "node dist/commands/step1.js",
     "prestep1": "npm run build",
     "step2:outline": "node dist/commands/step2-outline.js",
