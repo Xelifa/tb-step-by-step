@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TB Step by Step</title>
-  <link rel="stylesheet" href="/styles.css?v=web-selected-section-1">
+  <link rel="stylesheet" href="/styles.css?v=web-selected-checkboxes-1">
 </head>
 <body>
   <div class="page-shell">
@@ -210,10 +210,14 @@
           <p id="step2-section-result" class="inline-result"></p>
 
           <div class="form-field">
-            <label class="field-label" for="sections-multi-select">Select Multiple Sections (Ctrl/Cmd+Click)</label>
-            <select id="sections-multi-select" multiple size="6" disabled>
-              <option value="">Loading sections...</option>
-            </select>
+            <span class="field-label">Select Multiple Sections</span>
+            <div class="checkbox-controls">
+              <button type="button" id="select-all-sections" class="secondary small">Select All</button>
+              <button type="button" id="clear-all-sections" class="secondary small">Clear</button>
+            </div>
+            <div id="sections-checkbox-list" class="checkbox-list" role="group" aria-label="Available sections">
+              <p class="empty-state">Loading sections...</p>
+            </div>
           </div>
           <div class="actions">
             <button id="generate-selected-sections" disabled>Generate Selected Sections</button>
@@ -263,6 +267,6 @@ npm run final:combine</pre>
       </div>
     </main>
   </div>
-  <script defer src="/app.js?v=web-selected-section-1"></script>
+  <script defer src="/app.js?v=web-selected-checkboxes-1"></script>
 </body>
 </html>

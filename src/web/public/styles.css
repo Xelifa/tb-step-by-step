@@ -442,6 +442,56 @@ button.secondary,
   box-shadow: none;
 }
 
+button.small {
+  padding: 4px 10px;
+  font-size: 0.85em;
+}
+
+.checkbox-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.checkbox-list {
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--surface);
+}
+
+.checkbox-list .empty-state {
+  margin: 4px 0;
+  color: var(--ink-soft);
+  font-size: 0.9em;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+  font-size: 0.92em;
+  line-height: 1.4;
+}
+
+.checkbox-row input[type="checkbox"] {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.checkbox-row .checkbox-label {
+  flex: 1;
+  word-break: break-word;
+}
+
+.checkbox-row:hover {
+  background: var(--primary-pale);
+}
+
 .viewer-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

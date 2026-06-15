@@ -29,9 +29,11 @@ const generateSectionButton = document.querySelector('#generate-section');
 const step2SectionResult = document.querySelector('#step2-section-result');
 const generateAllSectionsButton = document.querySelector('#generate-all-sections');
 const batchGenerationResult = document.querySelector('#batch-generation-result');
-const sectionsMultiSelect = document.querySelector('#sections-multi-select');
 const generateSelectedSectionsButton = document.querySelector('#generate-selected-sections');
 const selectedGenerationResult = document.querySelector('#selected-generation-result');
+const sectionsCheckboxList = document.querySelector('#sections-checkbox-list');
+const selectAllSectionsButton = document.querySelector('#select-all-sections');
+const clearAllSectionsButton = document.querySelector('#clear-all-sections');
 
 const providerDefaults = {
   openai: {
@@ -140,17 +142,19 @@ async function loadStatus() {
     sectionSelect.disabled = false;
     generateSectionButton.disabled = false;
     generateAllSectionsButton.disabled = false;
-    sectionsMultiSelect.disabled = false;
     generateSelectedSectionsButton.disabled = false;
+    if (selectAllSectionsButton) selectAllSectionsButton.disabled = false;
+    if (clearAllSectionsButton) clearAllSectionsButton.disabled = false;
     await loadAvailableSections();
   } else {
     sectionSelect.disabled = true;
     generateSectionButton.disabled = true;
     generateAllSectionsButton.disabled = true;
-    sectionsMultiSelect.disabled = true;
     generateSelectedSectionsButton.disabled = true;
+    if (selectAllSectionsButton) selectAllSectionsButton.disabled = true;
+    if (clearAllSectionsButton) clearAllSectionsButton.disabled = true;
     sectionSelect.innerHTML = '<option value="">No sections available</option>';
-    sectionsMultiSelect.innerHTML = '<option value="">No sections available</option>';
+    sectionsCheckboxList.innerHTML = '<p class="empty-state">No sections available</p>';
   }
 }
 
@@ -391,12 +395,12 @@ async function loadAvailableSections() {
     const data = await request('/api/step2/sections');
     if (!data.success || !data.sections || data.sections.length === 0) {
       sectionSelect.innerHTML = '<option value="">No sections available</option>';
-      sectionsMultiSelect.innerHTML = '<option value="">No sections available</option>';
+      sectionsCheckboxList.innerHTML = '<p class="empty-state">No sections available</p>';
       return;
     }
 
     sectionSelect.innerHTML = '<option value="">Select a section...</option>';
-    sectionsMultiSelect.innerHTML = '';
+    sectionsCheckboxList.innerHTML = '';
     data.sections.forEach(section => {
       const indent = '  '.repeat(section.level - 1);
       const prefix = section.needs_research ? '🔍 ' : '';
@@ -407,14 +411,24 @@ async function loadAvailableSections() {
       single.textContent = label;
       sectionSelect.appendChild(single);
 
-      const multi = document.createElement('option');
-      multi.value = section.output_filename;
-      multi.textContent = label;
-      sectionsMultiSelect.appendChild(multi);
+      const row = document.createElement('label');
+      row.className = 'checkbox-row';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = section.output_filename;
+      checkbox.className = 'section-checkbox';
+
+      const text = document.createElement('span');
+      text.className = 'checkbox-label';
+      text.textContent = label;
+
+      row.append(checkbox, text);
+      sectionsCheckboxList.appendChild(row);
     });
   } catch (error) {
     sectionSelect.innerHTML = '<option value="">Error loading sections</option>';
-    sectionsMultiSelect.innerHTML = '<option value="">Error loading sections</option>';
+    sectionsCheckboxList.innerHTML = '<p class="empty-state">Error loading sections</p>';
   }
 }
 
@@ -512,9 +526,21 @@ generateAllSectionsButton.addEventListener('click', async () => {
   }
 });
 
+if (selectAllSectionsButton) {
+  selectAllSectionsButton.addEventListener('click', () => {
+    document.querySelectorAll('.section-checkbox').forEach(cb => { cb.checked = true; });
+  });
+}
+
+if (clearAllSectionsButton) {
+  clearAllSectionsButton.addEventListener('click', () => {
+    document.querySelectorAll('.section-checkbox').forEach(cb => { cb.checked = false; });
+  });
+}
+
 generateSelectedSectionsButton.addEventListener('click', async () => {
-  const selected = Array.from(sectionsMultiSelect.selectedOptions)
-    .map(opt => opt.value)
+  const selected = Array.from(document.querySelectorAll('.section-checkbox:checked'))
+    .map(cb => cb.value)
     .filter(v => v.length > 0);
 
   if (selected.length === 0) {
@@ -530,7 +556,9 @@ generateSelectedSectionsButton.addEventListener('click', async () => {
   generateSelectedSectionsButton.disabled = true;
   generateAllSectionsButton.disabled = true;
   generateSectionButton.disabled = true;
-  sectionsMultiSelect.disabled = true;
+  document.querySelectorAll('.section-checkbox').forEach(cb => { cb.disabled = true; });
+  if (selectAllSectionsButton) selectAllSectionsButton.disabled = true;
+  if (clearAllSectionsButton) clearAllSectionsButton.disabled = true;
   sectionSelect.disabled = true;
   selectedGenerationResult.textContent = 'Starting selected generation...';
 
@@ -580,7 +608,7 @@ generateSelectedSectionsButton.addEventListener('click', async () => {
     generateSelectedSectionsButton.disabled = false;
     generateAllSectionsButton.disabled = false;
     generateSectionButton.disabled = false;
-    sectionsMultiSelect.disabled = false;
+    document.querySelectorAll('.section-checkbox').forEach(cb => { cb.disabled = false; });
     sectionSelect.disabled = false;
     await loadStatus();
   }
