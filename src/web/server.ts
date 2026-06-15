@@ -15,6 +15,7 @@ import { markStep2OutlineConfirmed } from '../core/state-manager';
 import { getAvailableSections, generateSectionByFilename } from '../core/web-section-runner';
 import { startBatchGeneration, getBatchGenerationProgress } from '../core/batch-section-generator';
 import { startSelectedGeneration, getSelectedGenerationProgress } from '../core/selected-section-generator';
+import { webFinalCombine } from '../core/web-final-combine';
 
 const execFileAsync = promisify(execFile);
 const app = express();
@@ -633,6 +634,39 @@ app.get('/api/step2/sections/generate-selected/status', async (_request: Request
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get selected generation status'
     });
+  }
+});
+
+app.post('/api/final/combine', async (_request: Request, response: Response) => {
+  try {
+    const result = await webFinalCombine();
+    response.json(result);
+  } catch (error) {
+    response.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Final combine failed'
+    });
+  }
+});
+
+app.get('/api/final/download', async (_request: Request, response: Response) => {
+  try {
+    const session = await readDashboardSession();
+    const filePath = path.join(outputDir, 'final-combined.md');
+    if (!await fileModifiedAfter(filePath, session.last_reset_at)) {
+      response.status(404).json({ error: 'final-combined.md not found' });
+      return;
+    }
+    const content = await fs.readFile(filePath, 'utf8');
+    response.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    response.setHeader('Content-Disposition', 'attachment; filename="final-combined.md"');
+    response.send(content);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      response.status(404).json({ error: 'final-combined.md not found' });
+      return;
+    }
+    response.status(500).json({ error: error instanceof Error ? error.message : 'Download failed' });
   }
 });
 

@@ -186,7 +186,8 @@ body {
 }
 
 .step2-section-panel,
-.instructions-panel {
+.instructions-panel,
+.final-combine-panel {
   grid-column: span 6;
 }
 
@@ -575,7 +576,8 @@ input[type="file"]::file-selector-button {
   .step2-outline-panel,
   .step2-confirm-panel,
   .step2-section-panel,
-  .instructions-panel {
+  .instructions-panel,
+  .final-combine-panel {
     grid-column: span 12;
   }
 }

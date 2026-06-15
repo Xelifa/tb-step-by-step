@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TB Step by Step</title>
-  <link rel="stylesheet" href="/styles.css?v=web-selected-checkboxes-1">
+  <link rel="stylesheet" href="/styles.css?v=web-final-combine-1">
 </head>
 <body>
   <div class="page-shell">
@@ -227,6 +227,21 @@
           <p id="batch-generation-result" class="inline-result"></p>
         </section>
 
+        <section class="surface final-combine-panel">
+          <div class="section-heading stacked">
+            <div>
+              <p class="section-kicker">Final Combine</p>
+              <h2>合并最终文档</h2>
+            </div>
+            <p class="section-copy">按大纲顺序合并所有已生成章节为最终正文。需要大纲已确认且至少存在一个章节文件。</p>
+          </div>
+          <div class="actions">
+            <button id="final-combine-button" disabled>Combine Final Document</button>
+            <a id="final-download-link" class="file-button" style="display:none" href="/api/final/download" download="final-combined.md">Download final-combined.md</a>
+          </div>
+          <p id="final-combine-result" class="inline-result"></p>
+        </section>
+
         <section class="surface instructions-panel">
           <div class="section-heading stacked">
             <div>
@@ -267,6 +282,6 @@ npm run final:combine</pre>
       </div>
     </main>
   </div>
-  <script defer src="/app.js?v=web-selected-checkboxes-1"></script>
+  <script defer src="/app.js?v=web-final-combine-1"></script>
 </body>
 </html>
