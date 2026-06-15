@@ -760,8 +760,8 @@ function wireFinalCombine() {
 
 async function resetRuntime(mode) {
   const message = mode === 'all'
-    ? '将清空所有工作流文件并删除 config/model.json。.env 会被保留。继续？'
-    : '将清空工作流文件，保留 config/model.json 与 .env。继续？';
+    ? '【重置全部】\n\n将清空所有工作流文件，并删除 config/model.json。\n.env 默认保留。\n\n继续？'
+    : '【仅重置工作流】\n\n将清空工作流文件（input、output、logs、sections）。\nconfig/model.json 与 .env 保留。\n\n继续？';
   if (!window.confirm(message)) return;
   try {
     await request('/api/reset', {
@@ -769,11 +769,45 @@ async function resetRuntime(mode) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode })
     });
+    // Jump back to first incomplete step
     currentStepIndex = 0;
     await refreshAll();
+    for (let i = 0; i < STEPS.length; i++) {
+      if (stepStatus(STEPS[i].id) !== 'completed') {
+        currentStepIndex = i;
+        break;
+      }
+    }
+    updateStepNav();
+    renderCurrentStep();
   } catch (error) {
     showError(error);
   }
+}
+
+async function resetEverything() {
+  // First confirmation: explain scope
+  const first = window.confirm(
+    '【重置全部】\n\n' +
+    '将清空所有工作流文件，并删除 config/model.json。\n' +
+    '.env 默认保留（包含你的 API Key）。\n\n' +
+    '继续？'
+  );
+  if (!first) return;
+
+  // Second confirmation: stronger, asks about .env explicitly
+  const deleteEnv = window.confirm(
+    '是否同时删除 .env 文件？\n\n' +
+    '点 "确定" = 删除 .env（API Key 会被永久移除，需重新填写）。\n' +
+    '点 "取消" = 保留 .env。'
+  );
+  if (deleteEnv) {
+    // .env deletion is intentionally not exposed via the reset API.
+    // This path warns the user and aborts — they should remove .env manually if needed.
+    window.alert('出于安全考虑，Web UI 不会删除 .env。如需删除，请手动操作。已改为仅重置工作流与模型配置。');
+  }
+
+  await resetRuntime('all');
 }
 
 // ============================================================
@@ -805,10 +839,12 @@ function renderCurrentStep() {
 // ============================================================
 
 async function boot() {
-  // Top-level reset button
-  document.querySelector('#reset-runtime').addEventListener('click', () => {
-    const mode = window.confirm('重置并删除模型配置？点击取消将仅重置工作流（保留模型配置）。') ? 'all' : 'workflow';
-    resetRuntime(mode);
+  // Top-level reset buttons
+  document.querySelector('#reset-workflow').addEventListener('click', () => {
+    resetRuntime('workflow');
+  });
+  document.querySelector('#reset-everything').addEventListener('click', () => {
+    resetEverything();
   });
   document.querySelector('#refresh-status').addEventListener('click', refreshAll);
 

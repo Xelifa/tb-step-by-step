@@ -96,6 +96,27 @@ body {
   color: var(--ink);
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reset-group {
+  display: inline-flex;
+  gap: 8px;
+}
+
+button.ghost.danger {
+  border-color: rgba(176, 58, 46, 0.4);
+  color: var(--danger);
+}
+
+button.ghost.danger:hover:not(:disabled) {
+  background: rgba(176, 58, 46, 0.08);
+  border-color: var(--danger);
+}
+
 /* ============================================================
    Wizard grid
    ============================================================ */

@@ -386,7 +386,8 @@ app.post('/api/model-config/save-and-test', async (request: Request, response: R
 
 app.post('/api/reset', async (request: Request, response: Response) => {
   try {
-    const mode = request.body?.mode === 'all' ? 'all' : 'workflow';
+    const raw = request.body?.mode;
+    const mode: ResetMode = (raw === 'all' || raw === 'everything') ? 'all' : 'workflow';
     const result = await resetRuntime(mode);
 
     response.json({
