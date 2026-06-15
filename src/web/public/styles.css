@@ -443,6 +443,30 @@ button.secondary,
   box-shadow: none;
 }
 
+a.file-button {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.final-combine-panel .actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.final-combine-panel .actions button {
+  padding: 8px 14px;
+  font-size: 0.9rem;
+  border-radius: 8px;
+  align-self: center;
+  white-space: nowrap;
+}
+
 button.small {
   padding: 4px 10px;
   font-size: 0.85em;
@@ -461,6 +485,7 @@ button.small {
   border-radius: 6px;
   padding: 8px 10px;
   background: var(--surface);
+  color: var(--ink);
 }
 
 .checkbox-list .empty-state {
@@ -471,22 +496,32 @@ button.small {
 
 .checkbox-row {
   display: flex;
+  flex-direction: row;
   align-items: flex-start;
-  gap: 8px;
-  padding: 4px 0;
+  gap: 10px;
+  padding: 6px 4px;
   cursor: pointer;
-  font-size: 0.92em;
-  line-height: 1.4;
+  font-size: 0.95em;
+  line-height: 1.5;
+  color: var(--ink);
+  text-align: left;
 }
 
 .checkbox-row input[type="checkbox"] {
-  margin-top: 3px;
+  margin-top: 4px;
   flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
 }
 
 .checkbox-row .checkbox-label {
   flex: 1;
+  min-width: 0;
+  color: var(--ink);
   word-break: break-word;
+  white-space: normal;
+  display: block;
 }
 
 .checkbox-row:hover {
