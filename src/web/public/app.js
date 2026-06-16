@@ -48,17 +48,23 @@ let availableSectionsCache = [];
 // Core helpers
 // ============================================================
 
-// Shortcut accessor for centralized UI text, with English fallback
+// Shortcut accessor for centralized UI text, with English fallback.
+// Never throws — returns fallback for any bad key or missing window.UI_TEXT.
 function T(key, fallback) {
-  const val = window.UI_TEXT;
-  if (!val) return fallback;
-  const parts = key.split('.');
-  let cur = val;
-  for (const p of parts) {
-    if (cur == null || typeof cur !== 'object') return fallback;
-    cur = cur[p];
+  if (!key || typeof key !== 'string') return fallback ?? '';
+  try {
+    const val = window.UI_TEXT;
+    if (!val || typeof val !== 'object') return fallback ?? '';
+    const parts = key.split('.');
+    let cur = val;
+    for (const p of parts) {
+      if (cur == null || typeof cur !== 'object') return fallback ?? '';
+      cur = cur[p];
+    }
+    return cur != null && typeof cur !== 'undefined' ? String(cur) : (fallback ?? '');
+  } catch (_) {
+    return fallback ?? '';
   }
-  return cur != null ? String(cur) : fallback;
 }
   const response = await fetch(url, options);
   const contentType = response.headers.get('content-type') || '';
@@ -988,11 +994,15 @@ function renderCurrentStep() {
 
 async function boot() {
   // Apply window.UI_TEXT to elements with data-i18n-key attributes
-  document.querySelectorAll('[data-i18n-key]').forEach(el => {
-    const key = el.getAttribute('data-i18n-key');
-    const fallback = el.textContent.trim();
-    el.textContent = T(key, fallback);
-  });
+  try {
+    document.querySelectorAll('[data-i18n-key]').forEach(el => {
+      try {
+        const key = el.getAttribute('data-i18n-key');
+        const fallback = el.textContent.trim();
+        el.textContent = T(key, fallback);
+      } catch (_) { /* skip individual element errors */ }
+    });
+  } catch (_) { /* skip if querySelectorAll fails */ }
 
   // Top-level reset buttons
   document.querySelector('#reset-workflow').addEventListener('click', () => {

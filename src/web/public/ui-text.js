@@ -10,16 +10,16 @@
  * Falls back to English defaults if window.UI_TEXT is absent.
  */
 window.UI_TEXT = {
-  // App chrome
-  appTitle: 'TB 技术部分生成工作台',
-  appSubtitle: '本地投标技术文件生成向导',
-  brandMark: 'TB',
-  brandKicker: 'TB Step by Step',
-  brandTitle: '投标文件生成工作台',
+  // App chrome — single source of truth for all display text
+  appTitle:    'TB 技术部分生成工作台',
+  appSubtitle:  '本地投标技术文件生成向导',
+  brandMark:    'TB',
+  brandKicker:  'TB Step by Step',
+  brandTitle:   'TB 技术部分生成工作台', // alias of appTitle
 
-  // Reset buttons
-  resetWorkflowOnly: '重置当前项目',
-  resetEverything: '重新配置模型并重置项目',
+  // Reset buttons (standalone keys, not under buttons.)
+  resetWorkflow:     '重置当前项目',
+  resetEverything:   '重新配置模型并重置项目',
   resetWorkflowTooltip: 'Clear workflow files only. Keeps model config and .env.',
   resetEverythingTooltip: 'Clear everything and remove config/model.json. .env is kept by default.',
 
