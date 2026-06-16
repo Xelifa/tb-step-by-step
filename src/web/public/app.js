@@ -66,6 +66,8 @@ function T(key, fallback) {
     return fallback ?? '';
   }
 }
+
+async function request(url, options) {
   const response = await fetch(url, options);
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
