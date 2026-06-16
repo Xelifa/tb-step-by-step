@@ -805,6 +805,23 @@ npm run test:sections
 
 ---
 
+## 19. Web 前端开发规范
+
+### JS 语法检查
+
+任何涉及 `src/web/public/app.js` 或 `src/web/public/ui-text.js` 的 patch，在提交前必须运行：
+
+```bash
+npm run test:web-js
+npm run build
+```
+
+* `preweb` 钩子已强制绑定 `test:web-js` — `npm run web` 会自动触发检查。
+* TypeScript 编译器（`tsc`）不检查 `.js` 文件，因此纯 JS 语法错误（如顶层 `await`、未闭合的函数体、缺失的 `function` 关键字）可能在构建通过但在浏览器中崩溃。
+* `node --check` 可在运行前发现此类错误。
+
+---
+
 
 
 ## Writing Guidelines

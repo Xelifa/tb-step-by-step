@@ -27,7 +27,8 @@
     "workflow": "node dist/commands/workflow.js",
     "preworkflow": "npm run build",
     "web": "node dist/web/server.js",
-    "preweb": "npm run build",
+    "preweb": "npm run test:web-js && npm run build",
+    "test:web-js": "node --check src/web/public/app.js && node --check src/web/public/ui-text.js",
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rimraf dist"
