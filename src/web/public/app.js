@@ -228,8 +228,8 @@ function canContinueFromStep(stepId) {
     case 'outline':  return statusState.summary.step2_outline === 'completed';
     case 'confirm':  return statusState.summary.step2_confirm === 'completed';
     case 'sections': return statusState.completed_sections_count >= 1;
-    case 'combine':  return statusState.summary.final_combine === 'completed';
-    case 'export':   return statusState.summary.final_combine === 'completed';
+    case 'combine':  return statusState.summary.final_combine === 'completed' || statusState.files.some(f => f.name === 'final-combined.md');
+    case 'export':   return statusState.summary.final_combine === 'completed' || statusState.files.some(f => f.name === 'final-combined.md');
     default:         return false;
   }
 }
