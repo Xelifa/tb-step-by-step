@@ -30,14 +30,14 @@ const statusState = {
 
 // ----- Step definitions (order matters) -----
 const STEPS = [
-  { id: 'model',    label: '配置模型',          eyebrow: 'Step 1 of 8' },
-  { id: 'upload',   label: '上传招标文件',      eyebrow: 'Step 2 of 8' },
-  { id: 'step1',    label: '生成 new-prompt',  eyebrow: 'Step 3 of 8' },
-  { id: 'outline',  label: '生成大纲',          eyebrow: 'Step 4 of 8' },
-  { id: 'confirm',  label: '确认大纲',          eyebrow: 'Step 5 of 8' },
-  { id: 'sections', label: '撰写章节',          eyebrow: 'Step 6 of 8' },
-  { id: 'combine',  label: '合并最终文档',      eyebrow: 'Step 7 of 8' },
-  { id: 'export',   label: '导出',              eyebrow: 'Step 8 of 8' }
+  { id: 'model',    label: T('steps.model',    '配置模型'),          eyebrow: 'Step 1 of 8' },
+  { id: 'upload',   label: T('steps.upload',   '上传招标文件'),      eyebrow: 'Step 2 of 8' },
+  { id: 'step1',    label: T('steps.step1',    '生成 new-prompt'),  eyebrow: 'Step 3 of 8' },
+  { id: 'outline',  label: T('steps.outline',  '生成大纲'),          eyebrow: 'Step 4 of 8' },
+  { id: 'confirm',  label: T('steps.confirm',  '确认大纲'),          eyebrow: 'Step 5 of 8' },
+  { id: 'sections', label: T('steps.sections', '撰写章节'),          eyebrow: 'Step 6 of 8' },
+  { id: 'combine',  label: T('steps.combine',  '合并最终文档'),      eyebrow: 'Step 7 of 8' },
+  { id: 'export',   label: T('steps.export',   '导出'),              eyebrow: 'Step 8 of 8' }
 ];
 
 let currentStepIndex = 0;
@@ -48,7 +48,18 @@ let availableSectionsCache = [];
 // Core helpers
 // ============================================================
 
-async function request(url, options) {
+// Shortcut accessor for centralized UI text, with English fallback
+function T(key, fallback) {
+  const val = window.UI_TEXT;
+  if (!val) return fallback;
+  const parts = key.split('.');
+  let cur = val;
+  for (const p of parts) {
+    if (cur == null || typeof cur !== 'object') return fallback;
+    cur = cur[p];
+  }
+  return cur != null ? String(cur) : fallback;
+}
   const response = await fetch(url, options);
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
@@ -369,7 +380,7 @@ const RENDERERS = {
       <div class="card-form">
         <p class="hint">读取招标文件并生成 <code>output/new-prompt.md</code>。需要模型已通过测试且招标文件已上传。</p>
         <div class="form-actions">
-          <button id="run-step1" class="primary">Run Step 1</button>
+          <button id="run-step1" class="primary">${T('buttons.runStep1', 'Run Step 1')}</button>
         </div>
         <p id="step1-result" class="result-line"></p>
       </div>
@@ -383,7 +394,7 @@ const RENDERERS = {
       <div class="card-form">
         <p class="hint">基于 <code>new-prompt.md</code> 与招标文件生成三级目录大纲。</p>
         <div class="form-actions">
-          <button id="run-step2-outline" class="primary">Generate Outline</button>
+          <button id="run-step2-outline" class="primary">${T('buttons.generateOutline', 'Generate Outline')}</button>
         </div>
         <p id="step2-outline-result" class="result-line"></p>
       </div>
@@ -397,7 +408,7 @@ const RENDERERS = {
       <div class="card-form">
         <p class="hint">请先在右侧文件面板查看 <code>outline.md</code>。确认后，章节撰写将以该大纲为依据。</p>
         <div class="form-actions">
-          <button id="confirm-outline" class="primary">Confirm Outline</button>
+          <button id="confirm-outline" class="primary">${T('buttons.confirmOutline', 'Confirm Outline')}</button>
         </div>
         <p id="step2-confirm-result" class="result-line"></p>
       </div>
@@ -417,7 +428,7 @@ const RENDERERS = {
             <option value="">加载中…</option>
           </select>
           <div class="form-actions">
-            <button id="generate-section" class="primary" disabled>Generate Selected Section</button>
+            <button id="generate-section" class="primary" disabled>${T('buttons.generateSection', 'Generate Selected Section')}</button>
           </div>
           <p id="step2-section-result" class="result-line"></p>
         </div>
@@ -432,7 +443,7 @@ const RENDERERS = {
             <p class="empty-state">加载中…</p>
           </div>
           <div class="form-actions">
-            <button id="generate-selected-sections" class="primary" disabled>Generate Selected Sections</button>
+            <button id="generate-selected-sections" class="primary" disabled>${T('buttons.generateSelectedSections', 'Generate Selected Sections')}</button>
           </div>
           <p id="selected-generation-result" class="result-line"></p>
         </div>
@@ -440,7 +451,7 @@ const RENDERERS = {
         <div class="sub-card">
           <h4>所有剩余章节</h4>
           <div class="form-actions">
-            <button id="generate-all-sections" class="primary" disabled>Generate All Remaining Sections</button>
+            <button id="generate-all-sections" class="primary" disabled>${T('buttons.generateAllSections', 'Generate All Remaining Sections')}</button>
           </div>
           <p id="batch-generation-result" class="result-line"></p>
         </div>
@@ -456,7 +467,7 @@ const RENDERERS = {
       <div class="card-form">
         <p class="hint">按大纲顺序合并所有已生成章节。允许部分章节缺失（将插入占位符）。</p>
         <div class="form-actions">
-          <button id="final-combine-button" class="primary">Combine Final Document</button>
+          <button id="final-combine-button" class="primary">${T('buttons.combineFinal', 'Combine Final Document')}</button>
         </div>
         <p id="final-combine-result" class="result-line"></p>
         ${hasFinal ? '<p class="hint success-hint">已存在 final-combined.md。可继续生成，或前往导出。</p>' : ''}
@@ -472,8 +483,8 @@ const RENDERERS = {
       <div class="card-form">
         <p class="hint">下载合并后的最终正文。DOCX 是投标常用的 Word 格式，MD 是可读源文件。</p>
         <div class="form-actions">
-          <a id="export-docx" class="primary export-btn" href="/api/final/download-docx" download="final-combined.docx">⬇ Download final-combined.docx</a>
-          <a id="export-md" class="ghost export-btn" href="/api/final/download" download="final-combined.md">Download final-combined.md</a>
+          <a id="export-docx" class="primary export-btn" href="/api/final/download-docx" download="final-combined.docx">⬇ ${T('buttons.downloadDocx', 'Download Word 文档')}</a>
+          <a id="export-md" class="ghost export-btn" href="/api/final/download" download="final-combined.md">${T('buttons.downloadMd', 'Download Markdown 源文件')}</a>
         </div>
         ${hasFinal ? '' : '<p class="result-line">请先回到上一步生成 final-combined.md。</p>'}
       </div>
@@ -952,14 +963,14 @@ async function resetEverything() {
 // ============================================================
 
 const STEP_INSTRUCTIONS = {
-  model: '在开始撰写前，需要先配置并测试真实的模型 API。',
-  upload: '请将新招标文件（.docx）上传到 input/ 目录。',
-  step1: '读取招标文件，生成 new-prompt.md。',
-  outline: '基于 new-prompt.md 和招标文件生成三级目录大纲。',
-  confirm: '审阅右侧 outline.md，确认后章节撰写将以该大纲为依据。',
-  sections: '选择单个、多个或全部剩余章节生成。',
-  combine: '按大纲顺序合并所有已生成章节，缺失部分将插入占位符。',
-  export: '下载最终合并文档的 DOCX 或 Markdown 版本。'
+  model:    T('instructions.model',    '在开始撰写前，需要先配置并测试真实的模型 API。'),
+  upload:   T('instructions.upload',   '请将新招标文件（.docx）上传到 input/ 目录。'),
+  step1:    T('instructions.step1',    '读取招标文件，生成 new-prompt.md。'),
+  outline:  T('instructions.outline',  '基于 new-prompt.md 和招标文件生成三级目录大纲。'),
+  confirm:  T('instructions.confirm',  '审阅右侧 outline.md，确认后章节撰写将以该大纲为依据。'),
+  sections: T('instructions.sections', '选择单个、多个或全部剩余章节生成。'),
+  combine:  T('instructions.combine', '按大纲顺序合并所有已生成章节，缺失部分将插入占位符。'),
+  export:   T('instructions.export',   '下载最终合并文档的 DOCX 或 Markdown 版本。')
 };
 
 function renderCurrentStep() {
@@ -976,6 +987,13 @@ function renderCurrentStep() {
 // ============================================================
 
 async function boot() {
+  // Apply window.UI_TEXT to elements with data-i18n-key attributes
+  document.querySelectorAll('[data-i18n-key]').forEach(el => {
+    const key = el.getAttribute('data-i18n-key');
+    const fallback = el.textContent.trim();
+    el.textContent = T(key, fallback);
+  });
+
   // Top-level reset buttons
   document.querySelector('#reset-workflow').addEventListener('click', () => {
     resetRuntime('workflow');

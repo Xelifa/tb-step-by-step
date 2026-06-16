@@ -8,6 +8,7 @@
 </head>
 <body>
   <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="false"></div>
+  <script src="/ui-text.js"></script>
   <div class="page-shell">
     <div class="app-shell">
       <header class="topbar">
@@ -20,8 +21,8 @@
         </div>
         <div class="topbar-actions">
           <div class="reset-group">
-            <button id="reset-workflow" class="ghost small" title="Clear workflow files only. Keeps model config and .env.">Reset workflow only</button>
-            <button id="reset-everything" class="ghost small danger" title="Clear everything and remove config/model.json. .env is kept by default.">Reset everything</button>
+            <button id="reset-workflow" class="ghost small" data-i18n-title="buttons.resetWorkflow" title="Clear workflow files only. Keeps model config and .env.">重置当前项目</button>
+            <button id="reset-everything" class="ghost small danger" data-i18n-title="buttons.resetEverything" title="Clear everything and remove config/model.json. .env is kept by default.">重新配置模型并重置项目</button></button>
           </div>
         </div>
       </header>
