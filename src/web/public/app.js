@@ -267,7 +267,8 @@ function updateStepNav() {
 function updateFileTree() {
   const files = statusState.files;
   const has = (name) => files.some(f => f.name === name);
-  const sectionCount = files.filter(f => typeof f.source === 'string' && f.source.startsWith('sections/')).length;
+  const sectionFiles = files.filter(f => typeof f.source === 'string' && f.source.startsWith('sections/'));
+  const sectionCount = sectionFiles.length;
 
   const setRow = (selector, present, value) => {
     const el = document.querySelector(selector);
@@ -285,6 +286,65 @@ function updateFileTree() {
   setRow('[data-file="sections"]', sectionCount > 0, `${sectionCount} 个`);
   setRow('[data-file="final-combined"]', has('final-combined.md'), '已合并');
   setRow('[data-file="final-docx"]', has('final-combined.md'), '可导出');
+
+  // Build expandable section children under the sections row
+  const sectionsRow = document.querySelector('[data-file="sections"]');
+  if (sectionsRow) {
+    // Remove old children
+    sectionsRow.querySelectorAll('.section-child').forEach(el => el.remove());
+    // Build toggle if sections exist
+    const toggle = sectionsRow.querySelector('.sections-toggle');
+    const childContainer = sectionsRow.querySelector('.sections-children') || document.createElement('ul');
+    childContainer.className = 'sections-children';
+    childContainer.innerHTML = '';
+    if (sectionCount > 0) {
+      sectionFiles.forEach(f => {
+        const child = document.createElement('li');
+        child.className = 'file-row section-child';
+        child.dataset.sectionFile = f.name;
+        child.style.paddingLeft = '1.5rem';
+        child.style.cursor = 'pointer';
+        child.innerHTML = `<span class="file-icon">📄</span><span class="file-name">${f.source.replace('sections/', '')}</span><span class="file-status" data-state="completed">预览</span>`;
+        child.addEventListener('click', () => loadSectionPreview(f.name));
+        childContainer.appendChild(child);
+      });
+      if (!sectionsRow.contains(childContainer)) {
+        sectionsRow.appendChild(childContainer);
+      }
+      // Ensure toggle exists
+      if (!toggle) {
+        const t = document.createElement('button');
+        t.className = 'sections-toggle ghost small';
+        t.type = 'button';
+        t.textContent = '▸';
+        t.style.marginLeft = '4px';
+        t.style.fontSize = '0.75em';
+        t.style.padding = '0 4px';
+        t.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const expanded = childContainer.style.display === 'block';
+          childContainer.style.display = expanded ? 'none' : 'block';
+          t.textContent = expanded ? '▸' : '▾';
+        });
+        sectionsRow.querySelector('.file-name').appendChild(t);
+      }
+      childContainer.style.display = 'none';
+    }
+  }
+}
+
+async function loadSectionPreview(sectionFilename) {
+  const viewer = document.querySelector('#viewer');
+  const viewerTitle = document.querySelector('#viewer-title');
+  if (!viewer) return;
+  viewerTitle.textContent = `章节：${sectionFilename}`;
+  viewer.textContent = '加载中…';
+  try {
+    const data = await request(`/api/output/${encodeURIComponent(sectionFilename)}`);
+    viewer.textContent = typeof data.content === 'string' ? data.content : JSON.stringify(data.content, null, 2);
+  } catch (error) {
+    viewer.textContent = `无法加载预览：${error.message}`;
+  }
 }
 
 function setStepHeader(stepDef, instruction) {

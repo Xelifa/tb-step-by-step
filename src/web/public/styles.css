@@ -800,3 +800,59 @@ button:disabled,
     max-width: none;
   }
 }
+
+/* ============================================================
+   Expandable section children
+   ============================================================ */
+
+.file-row .sections-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.file-row.section-child {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.88em;
+  color: var(--ink);
+}
+
+.file-row.section-child:hover {
+  background: var(--primary-pale);
+}
+
+.file-row.section-child .file-icon {
+  font-size: 0.85em;
+}
+
+.file-row.section-child .file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-row.section-child .file-status {
+  color: var(--primary);
+  font-size: 0.8em;
+  flex-shrink: 0;
+}
+
+button.sections-toggle {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--ink-muted);
+  flex-shrink: 0;
+}
+
+button.sections-toggle:hover {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
