@@ -11,7 +11,7 @@ import {
 } from '../core/model-config-service';
 import { runStep1 } from '../core/step1-runner';
 import { runStep2Outline } from '../core/step2-outline-runner';
-import { markStep2OutlineConfirmed } from '../core/state-manager';
+import { markStep2OutlineConfirmed, markFinalCombined } from '../core/state-manager';
 import { getAvailableSections, generateSectionByFilename } from '../core/web-section-runner';
 import { startBatchGeneration, getBatchGenerationProgress } from '../core/batch-section-generator';
 import { startSelectedGeneration, getSelectedGenerationProgress } from '../core/selected-section-generator';
@@ -642,6 +642,9 @@ app.get('/api/step2/sections/generate-selected/status', async (_request: Request
 app.post('/api/final/combine', async (_request: Request, response: Response) => {
   try {
     const result = await webFinalCombine();
+    if (result.success) {
+      await markFinalCombined();
+    }
     response.json(result);
   } catch (error) {
     response.status(500).json({

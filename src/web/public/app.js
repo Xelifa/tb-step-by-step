@@ -289,48 +289,55 @@ function updateFileTree() {
 
   // Build expandable section children under the sections row
   const sectionsRow = document.querySelector('[data-file="sections"]');
-  if (sectionsRow) {
-    // Remove old children
-    sectionsRow.querySelectorAll('.section-child').forEach(el => el.remove());
-    // Build toggle if sections exist
-    const toggle = sectionsRow.querySelector('.sections-toggle');
-    const childContainer = sectionsRow.querySelector('.sections-children') || document.createElement('ul');
-    childContainer.className = 'sections-children';
-    childContainer.innerHTML = '';
-    if (sectionCount > 0) {
-      sectionFiles.forEach(f => {
-        const child = document.createElement('li');
-        child.className = 'file-row section-child';
-        child.dataset.sectionFile = f.name;
-        child.style.paddingLeft = '1.5rem';
-        child.style.cursor = 'pointer';
-        child.innerHTML = `<span class="file-icon">📄</span><span class="file-name">${f.source.replace('sections/', '')}</span><span class="file-status" data-state="completed">预览</span>`;
-        child.addEventListener('click', () => loadSectionPreview(f.name));
-        childContainer.appendChild(child);
-      });
-      if (!sectionsRow.contains(childContainer)) {
-        sectionsRow.appendChild(childContainer);
-      }
-      // Ensure toggle exists
-      if (!toggle) {
-        const t = document.createElement('button');
-        t.className = 'sections-toggle ghost small';
-        t.type = 'button';
-        t.textContent = '▸';
-        t.style.marginLeft = '4px';
-        t.style.fontSize = '0.75em';
-        t.style.padding = '0 4px';
-        t.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const expanded = childContainer.style.display === 'block';
-          childContainer.style.display = expanded ? 'none' : 'block';
-          t.textContent = expanded ? '▸' : '▾';
-        });
-        sectionsRow.querySelector('.file-name').appendChild(t);
-      }
-      childContainer.style.display = 'none';
-    }
+  if (!sectionsRow) return;
+  const fileNameEl = sectionsRow.querySelector('.file-name');
+  if (!fileNameEl) return;
+  // Remove old toggle + children
+  sectionsRow.querySelectorAll('.sections-toggle, .sections-children').forEach(el => el.remove());
+
+  const childContainer = document.createElement('ul');
+  childContainer.className = 'sections-children';
+  childContainer.setAttribute('role', 'list');
+
+  // Build section child rows
+  sectionFiles.forEach(f => {
+    const child = document.createElement('li');
+    child.className = 'section-child-row';
+    const shortName = f.source.replace('sections/', '');
+    child.innerHTML = `<span class="section-child-name">📄 ${shortName}</span><span class="section-child-action">预览</span>`;
+    child.addEventListener('click', () => loadSectionPreview(f.name));
+    childContainer.appendChild(child);
+  });
+
+  // Toggle button
+  const toggle = document.createElement('button');
+  toggle.className = 'sections-toggle';
+  toggle.type = 'button';
+  toggle.setAttribute('aria-label', 'Expand sections');
+  toggle.textContent = '▸';
+
+  const toggleContainer = document.createElement('span');
+  toggleContainer.className = 'sections-toggle-wrap';
+  toggleContainer.appendChild(toggle);
+
+  let expanded = false;
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    expanded = !expanded;
+    toggle.textContent = expanded ? '▾' : '▸';
+    childContainer.style.display = expanded ? '' : 'none';
+  });
+
+  // Append toggle after file-name (before status if present, or at end)
+  const statusEl = sectionsRow.querySelector('.file-status');
+  if (statusEl) {
+    sectionsRow.insertBefore(toggleContainer, statusEl);
+  } else {
+    sectionsRow.appendChild(toggleContainer);
   }
+
+  // Append children AFTER the sections li (not inside it)
+  sectionsRow.parentElement.insertBefore(childContainer, sectionsRow.nextSibling);
 }
 
 async function loadSectionPreview(sectionFilename) {
