@@ -30,3 +30,19 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# secrets
+.env
+
+# runtime files
+logs/
+input/
+output/
+
+# dependencies
+node_modules/
+
+# build output
+dist/
+dist-web/
+.DS_Store
