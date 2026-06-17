@@ -687,6 +687,17 @@ button:disabled,
   letter-spacing: 0.06em;
 }
 
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.preview-header h3 {
+  margin: 0;
+}
+
 .viewer {
   margin: 0;
   padding: 12px;

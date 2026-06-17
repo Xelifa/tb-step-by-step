@@ -718,6 +718,27 @@ app.post('/api/run/step2-status', async (_request: Request, response: Response) 
   }
 });
 
+app.delete('/api/sections/:filename', async (request: Request, response: Response) => {
+  try {
+    const filename = singleParam(request.params.filename);
+    if (!isSafeFilename(filename) || !filename.endsWith('.md')) {
+      response.status(400).json({ error: 'Invalid section filename' });
+      return;
+    }
+    const filePath = path.join(sectionsDir, filename);
+    // Ensure the resolved path is inside sectionsDir (blocks ../ attacks)
+    const resolved = path.resolve(filePath);
+    if (!resolved.startsWith(path.resolve(sectionsDir))) {
+      response.status(400).json({ error: 'Invalid section filename' });
+      return;
+    }
+    await deleteIfExists(filePath);
+    response.json({ success: true, filename });
+  } catch (error) {
+    response.status(500).json({ error: error instanceof Error ? error.message : 'Delete failed' });
+  }
+});
+
 app.get('/api/output', async (_request: Request, response: Response) => {
   try {
     const session = await readDashboardSession();

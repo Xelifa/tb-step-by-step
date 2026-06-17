@@ -28,6 +28,10 @@ const statusState = {
   files: []
 };
 
+let viewerTitle = '';
+let viewerTitleEl = null;
+let previewDeleteBtn = null;
+
 // ----- Step definitions (order matters) -----
 const STEPS = [
   { id: 'model',    label: T('steps.model',    '配置模型'),          eyebrow: 'Step 1 of 8' },
@@ -342,9 +346,12 @@ function updateFileTree() {
 
 async function loadSectionPreview(sectionFilename) {
   const viewer = document.querySelector('#viewer');
-  const viewerTitle = document.querySelector('#viewer-title');
   if (!viewer) return;
-  viewerTitle.textContent = `章节：${sectionFilename}`;
+  viewerTitle = sectionFilename;
+  if (!viewerTitleEl) viewerTitleEl = document.querySelector('#viewer-title');
+  if (!previewDeleteBtn) previewDeleteBtn = document.querySelector('#preview-delete');
+  if (previewDeleteBtn) previewDeleteBtn.style.display = sectionFilename.startsWith('section-') ? '' : 'none';
+  if (viewerTitleEl) viewerTitleEl.textContent = `章节：${sectionFilename}`;
   viewer.textContent = '加载中…';
   try {
     const data = await request(`/api/output/${encodeURIComponent(sectionFilename)}`);
@@ -1109,16 +1116,33 @@ async function boot() {
         'outline': 'outline.md',
         'final-combined': 'final-combined.md'
       };
-      const file = map[key];
+      const file = key === 'sections' ? null : map[key];
+      if (key === 'sections') return; // sections expand/collapse handled separately
       if (!file) return;
+      await loadSectionPreview(file);
+    });
+  });
+
+  // Preview title + delete button
+  viewerTitleEl = document.querySelector('#viewer-title');
+  previewDeleteBtn = document.querySelector('#preview-delete');
+  if (previewDeleteBtn) {
+    previewDeleteBtn.addEventListener('click', async () => {
+      if (!viewerTitle || !viewerTitle.startsWith('section-')) return;
+      if (!window.confirm(`删除章节 "${viewerTitle}"？此操作不可撤销。`)) return;
       try {
-        const data = await request(`/api/output/${encodeURIComponent(file)}`);
-        document.querySelector('#viewer').textContent = typeof data.content === 'string' ? data.content : JSON.stringify(data.content, null, 2);
+        await request(`/api/sections/${encodeURIComponent(viewerTitle)}`, { method: 'DELETE' });
+        document.querySelector('#viewer').textContent = 'Select a file to preview.';
+        if (viewerTitleEl) viewerTitleEl.textContent = 'Preview';
+        if (previewDeleteBtn) previewDeleteBtn.style.display = 'none';
+        viewerTitle = '';
+        await Promise.all([loadStatus(), loadFiles()]);
+        updateFileTree();
       } catch (error) {
         showError(error);
       }
     });
-  });
+  }
 
   // Initial load: status + files + model config
   try {
