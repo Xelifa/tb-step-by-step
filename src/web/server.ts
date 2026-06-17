@@ -33,7 +33,8 @@ const dashboardSessionFile = path.join(logsDir, '.web-ui-session');
 const topLevelOutputs = new Set([
   'new-prompt.md',
   'outline.md',
-  'final-combined.md'
+  'final-combined.md',
+  'final-combined.docx'
 ]);
 
 const safeLogFiles = new Set([
