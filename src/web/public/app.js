@@ -296,8 +296,10 @@ function updateFileTree() {
   if (!sectionsRow) return;
   const fileNameEl = sectionsRow.querySelector('.file-name');
   if (!fileNameEl) return;
-  // Remove old toggle + children
-  sectionsRow.querySelectorAll('.sections-toggle, .sections-children').forEach(el => el.remove());
+  // Remove old toggle + children (they are siblings, not children, of sectionsRow)
+  if (sectionsRow.parentElement) {
+    sectionsRow.parentElement.querySelectorAll('.sections-toggle, .sections-children').forEach(el => el.remove());
+  }
 
   const childContainer = document.createElement('ul');
   childContainer.className = 'sections-children';
@@ -1138,6 +1140,7 @@ async function boot() {
         viewerTitle = '';
         await Promise.all([loadStatus(), loadFiles()]);
         updateFileTree();
+        renderCurrentStep();
       } catch (error) {
         showError(error);
       }
