@@ -209,6 +209,45 @@ ${inputs.skill}
 }
 
 // Helper functions for parsing LLM response
+function stripSectionHeaders(text: string): string {
+  // Remove leading A/B/C/D section headers that LLM may prepend
+  return text
+    .replace(/^[A-D]\.\s+(适配结论摘要|旧\s*Prompt\s*适配诊断|完整新\s*Prompt|关键替换点清单)[：:：]?\s*/gim, '')
+    .replace(/^(={3,}|#{1,6}\s*)+/gm, '')
+    .replace(/^```markdown\s*/gim, '')
+    .replace(/^```\s*$/gm, '')
+    .trim();
+}
+
+function buildAdaptationReport(adapted: AdaptedPrompt): string {
+  const lines: string[] = [];
+  lines.push('# Step 1 适配报告');
+  lines.push('');
+  lines.push('## A. 适配结论摘要');
+  lines.push(adapted.adaptation_summary || '(未提供)');
+  lines.push('');
+  lines.push('## B. 旧 Prompt 适配诊断');
+  if (adapted.adaptation_diagnosis) {
+    lines.push('### 保留项');
+    adapted.adaptation_diagnosis.preserved?.forEach(item => lines.push(`- ${item}`));
+    lines.push('');
+    lines.push('### 替换项');
+    adapted.adaptation_diagnosis.replaced?.forEach(item => lines.push(`- ${item}`));
+    lines.push('');
+    lines.push('### 新增项');
+    adapted.adaptation_diagnosis.added?.forEach(item => lines.push(`- ${item}`));
+    lines.push('');
+    lines.push('### 删除项');
+    adapted.adaptation_diagnosis.deleted?.forEach(item => lines.push(`- ${item}`));
+  } else {
+    lines.push('(无诊断信息)');
+  }
+  lines.push('');
+  lines.push('## D. 关键替换点清单');
+  adapted.key_replacements?.forEach(item => lines.push(`- ${item}`));
+  return lines.join('\n');
+}
+
 function extractSection(text: string, sectionTitle: string): string | null {
   const regex = new RegExp(`${sectionTitle}[\\s\\S]*?(?=(?:\\n[A-D]\\. |$))`, 'i');
   const match = text.match(regex);
@@ -264,9 +303,15 @@ export async function runStep1(tenderFileName?: string): Promise<Step1RunResult>
     // Step 6: Save outputs
     logger.section('Saving Outputs');
 
-    // Save new-prompt.md
-    await writeTextFile('output/new-prompt.md', adaptedPrompt.full_new_prompt);
+    // Strip A/B/C/D section headers from the LLM output so new-prompt.md is clean
+    const cleanPrompt = stripSectionHeaders(adaptedPrompt.full_new_prompt);
+    await writeTextFile('output/new-prompt.md', cleanPrompt);
     logger.success('Saved output/new-prompt.md');
+
+    // Save adaptation report (diagnostic info) separately so it doesn't pollute the prompt file
+    const adaptationReport = buildAdaptationReport(adaptedPrompt);
+    await writeTextFile('logs/step1-adaptation-report.md', adaptationReport);
+    logger.success('Saved logs/step1-adaptation-report.md');
 
     // Step 7: Create run log
     const runResult: Step1RunResult = {
