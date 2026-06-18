@@ -208,38 +208,86 @@ ${inputs.skill}
   return adapted;
 }
 
-// Extract the clean prompt from LLM output — only the content inside the
-// ```markdown fence under "C. 完整新 Prompt". Validates no meta markers remain.
+// Patterns that mark the END of the usable prompt content — anything on the same
+// line or after is stripped. Order matters: broader patterns last.
+const TAIL_CUTTERS = [
+  // D. section headers (markdown or plain)
+  /(?:^|\n)(?:\s*#+\s*)?D\.\s*关键替换点清单[：:\s]*/im,
+  /(?:^|\n)(?:\s*#+\s*)?D\.+\s*[^\n]*/im,
+  // Standalone forbidden markers anywhere in content (not just at start of line)
+  /关键替换点清单/,
+  /^\s*替换点清单/gm,
+  // Conclusion / completion notes
+  /\*\*结论\*\*/,
+  /结论[：:]\s*新\s*Prompt\s*已准备就绪/,
+  /适配完成/,
+  /✅\s*适配完成/,
+];
+
+// Forbidden markers — if ANY match, abort rather than save polluted output
+const FORBIDDEN_IN_OUTPUT = [
+  /关键替换点清单/,
+  /替换项(?!.*【)/,           // "替换项" not inside 【】 (role def is ok)
+  /旧内容/,
+  /新内容（或保留）/,
+  /适配完成/,
+  /\*\*结论\*\*/,
+  /新\s*Prompt\s*已准备就绪/,
+  /^[A-D]\.\s/m,            // any A/B/C/D at line start
+  /^```/m,                  // leftover markdown fences
+];
+
+function applyTailCutters(text: string): string {
+  let result = text;
+  for (const cutter of TAIL_CUTTERS) {
+    const idx = result.search(cutter);
+    if (idx !== -1) {
+      result = result.slice(0, idx);
+    }
+  }
+  return result;
+}
+
 function extractCleanPrompt(raw: string): string {
-  // Find the ```markdown block that follows "C. 完整新 Prompt"
-  const fencedMatch = raw.match(/C\.\s*完整新\s*Prompt[^\n]*\n+```markdown\s*\n([\s\S]*?)```/i);
   let content: string;
-  if (fencedMatch) {
-    content = fencedMatch[1].trim();
+
+  // Strategy 1: extract everything from "C. 完整新 Prompt" to just before "D."
+  const cSectionMatch = raw.match(/C\.\s*完整新\s*Prompt[\s\S]*?(?=\n\s*(?:D\.|#\s*D\.)|$)/i);
+  if (cSectionMatch) {
+    content = cSectionMatch[0];
+    // Strip the C. header line itself
+    content = content.replace(/^C\.\s*完整新\s*Prompt[^\n]*\n?/i, '');
   } else {
-    // Fallback: strip everything before 【角色定义】 and after any A/B/C/D marker
+    // Strategy 2: start at 【角色定义】, strip everything after the first tail cutter
     const roleStart = raw.indexOf('【角色定义】');
     if (roleStart === -1) {
       throw new Error('Could not find 【角色定义】 in LLM response. Aborting to avoid polluting new-prompt.md');
     }
     content = raw.slice(roleStart);
-    // Remove anything that looks like a section header after the role block
-    content = content.replace(/\n[A-D]\.\s+\S[\s\S]*$/i, '');
   }
 
-  // Validate: fail if forbidden markers are still present
-  const forbidden = [
-    /^A\.\s/m, /^B\.\s/m, /^C\.\s/m, /^D\.\s/m,
-    /关键替换点清单/, /适配结论摘要/, /适配完成/, /旧\s*Prompt\s*适配诊断/,
-    /^[A-D]\.\s+\S/m
-  ];
-  for (const pattern of forbidden) {
+  // Apply tail cutters — remove D. sections, conclusions, etc.
+  content = applyTailCutters(content);
+
+  // Strip any remaining markdown fences
+  content = content
+    .replace(/```markdown\n?/gi, '')
+    .replace(/```\n?/gi, '')
+    .trim();
+
+  // Validate: if any forbidden marker remains, abort
+  for (const pattern of FORBIDDEN_IN_OUTPUT) {
     if (pattern.test(content)) {
       throw new Error(
         `Validation failed: forbidden marker "${pattern}" still in extracted prompt. ` +
         'LLM response format was unexpected. Please retry or report this issue.'
       );
     }
+  }
+
+  // Final check: must start with 【角色定义】
+  if (!content.startsWith('【角色定义】')) {
+    throw new Error('Extracted content does not start with 【角色定义】. Aborting.');
   }
 
   return content;
