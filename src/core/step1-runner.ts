@@ -208,44 +208,41 @@ ${inputs.skill}
   return adapted;
 }
 
-// Helper functions for parsing LLM response
-function stripSectionHeaders(text: string): string {
-  // Remove leading A/B/C/D section headers that LLM may prepend
-  return text
-    .replace(/^[A-D]\.\s+(适配结论摘要|旧\s*Prompt\s*适配诊断|完整新\s*Prompt|关键替换点清单)[：:：]?\s*/gim, '')
-    .replace(/^(={3,}|#{1,6}\s*)+/gm, '')
-    .replace(/^```markdown\s*/gim, '')
-    .replace(/^```\s*$/gm, '')
-    .trim();
-}
-
-function buildAdaptationReport(adapted: AdaptedPrompt): string {
-  const lines: string[] = [];
-  lines.push('# Step 1 适配报告');
-  lines.push('');
-  lines.push('## A. 适配结论摘要');
-  lines.push(adapted.adaptation_summary || '(未提供)');
-  lines.push('');
-  lines.push('## B. 旧 Prompt 适配诊断');
-  if (adapted.adaptation_diagnosis) {
-    lines.push('### 保留项');
-    adapted.adaptation_diagnosis.preserved?.forEach(item => lines.push(`- ${item}`));
-    lines.push('');
-    lines.push('### 替换项');
-    adapted.adaptation_diagnosis.replaced?.forEach(item => lines.push(`- ${item}`));
-    lines.push('');
-    lines.push('### 新增项');
-    adapted.adaptation_diagnosis.added?.forEach(item => lines.push(`- ${item}`));
-    lines.push('');
-    lines.push('### 删除项');
-    adapted.adaptation_diagnosis.deleted?.forEach(item => lines.push(`- ${item}`));
+// Extract the clean prompt from LLM output — only the content inside the
+// ```markdown fence under "C. 完整新 Prompt". Validates no meta markers remain.
+function extractCleanPrompt(raw: string): string {
+  // Find the ```markdown block that follows "C. 完整新 Prompt"
+  const fencedMatch = raw.match(/C\.\s*完整新\s*Prompt[^\n]*\n+```markdown\s*\n([\s\S]*?)```/i);
+  let content: string;
+  if (fencedMatch) {
+    content = fencedMatch[1].trim();
   } else {
-    lines.push('(无诊断信息)');
+    // Fallback: strip everything before 【角色定义】 and after any A/B/C/D marker
+    const roleStart = raw.indexOf('【角色定义】');
+    if (roleStart === -1) {
+      throw new Error('Could not find 【角色定义】 in LLM response. Aborting to avoid polluting new-prompt.md');
+    }
+    content = raw.slice(roleStart);
+    // Remove anything that looks like a section header after the role block
+    content = content.replace(/\n[A-D]\.\s+\S[\s\S]*$/i, '');
   }
-  lines.push('');
-  lines.push('## D. 关键替换点清单');
-  adapted.key_replacements?.forEach(item => lines.push(`- ${item}`));
-  return lines.join('\n');
+
+  // Validate: fail if forbidden markers are still present
+  const forbidden = [
+    /^A\.\s/m, /^B\.\s/m, /^C\.\s/m, /^D\.\s/m,
+    /关键替换点清单/, /适配结论摘要/, /适配完成/, /旧\s*Prompt\s*适配诊断/,
+    /^[A-D]\.\s+\S/m
+  ];
+  for (const pattern of forbidden) {
+    if (pattern.test(content)) {
+      throw new Error(
+        `Validation failed: forbidden marker "${pattern}" still in extracted prompt. ` +
+        'LLM response format was unexpected. Please retry or report this issue.'
+      );
+    }
+  }
+
+  return content;
 }
 
 function extractSection(text: string, sectionTitle: string): string | null {
@@ -303,15 +300,14 @@ export async function runStep1(tenderFileName?: string): Promise<Step1RunResult>
     // Step 6: Save outputs
     logger.section('Saving Outputs');
 
-    // Strip A/B/C/D section headers from the LLM output so new-prompt.md is clean
-    const cleanPrompt = stripSectionHeaders(adaptedPrompt.full_new_prompt);
+    // Save full LLM response as adaptation report
+    await writeTextFile('logs/step1-adaptation-report.md', adaptedPrompt.full_new_prompt);
+    logger.success('Saved logs/step1-adaptation-report.md');
+
+    // Extract only the fenced block content from C. 完整新 Prompt
+    const cleanPrompt = extractCleanPrompt(adaptedPrompt.full_new_prompt);
     await writeTextFile('output/new-prompt.md', cleanPrompt);
     logger.success('Saved output/new-prompt.md');
-
-    // Save adaptation report (diagnostic info) separately so it doesn't pollute the prompt file
-    const adaptationReport = buildAdaptationReport(adaptedPrompt);
-    await writeTextFile('logs/step1-adaptation-report.md', adaptationReport);
-    logger.success('Saved logs/step1-adaptation-report.md');
 
     // Step 7: Create run log
     const runResult: Step1RunResult = {
