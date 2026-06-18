@@ -419,6 +419,7 @@ const RENDERERS = {
           <label class="form-field">
             <span class="field-label">Max Tokens</span>
             <input id="model-max-tokens" type="number" min="1" step="1" required>
+            <span class="hint">Default 6000. For long documents, try 12000–20000 if your model supports it.</span>
           </label>
           <label class="form-field">
             <span class="field-label">Timeout Seconds</span>
@@ -591,8 +592,8 @@ const RENDERERS = {
 
 const providerDefaults = {
   openai: { base_url: 'https://api.openai.com/v1', model: 'gpt-4o', api_key_env: 'OPENAI_API_KEY' },
-  deepseek: { base_url: 'https://api.deepseek.com', model: 'deepseek-chat', api_key_env: 'DEEPSEEK_API_KEY' },
-  glm: { base_url: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-plus', api_key_env: 'GLM_API_KEY' },
+  deepseek: { base_url: 'https://api.deepseek.com', model: 'deepseek-v4-flash', api_key_env: 'DEEPSEEK_API_KEY' },
+  glm: { base_url: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4-flash', api_key_env: 'GLM_API_KEY' },
   'claude-compatible': { base_url: 'https://api.anthropic.com', model: 'claude-3-5-sonnet-latest', api_key_env: 'CLAUDE_API_KEY' },
   custom: { base_url: '', model: '', api_key_env: 'CUSTOM_API_KEY' }
 };
@@ -601,13 +602,13 @@ function populateModelConfigFromStatus() {
   const data = modelConfigSnapshot;
   if (!data) return;
   const defaults = providerDefaults[data.provider] || providerDefaults.deepseek;
-  document.querySelector('#model-provider').value = data.provider || 'deepseek';
+  document.querySelector('#model-provider').value = data.provider || 'glm';
   document.querySelector('#model-base-url').value = data.base_url || defaults.base_url;
   document.querySelector('#model-name').value = data.model || defaults.model;
   document.querySelector('#model-api-key-env').value = data.api_key_env || defaults.api_key_env;
-  document.querySelector('#model-temperature').value = String(data.temperature ?? '0.2');
+  document.querySelector('#model-temperature').value = String(data.temperature ?? '0.5');
   document.querySelector('#model-max-tokens').value = String(data.max_tokens ?? '6000');
-  document.querySelector('#model-timeout-seconds').value = String(data.timeout_seconds ?? '120');
+  document.querySelector('#model-timeout-seconds').value = String(data.timeout_seconds ?? '600');
   document.querySelector('#model-api-key-value').value = '';
   const statusEl = document.querySelector('#model-config-status');
   if (statusEl) {
