@@ -467,7 +467,7 @@ const RENDERERS = {
         <p class="hint">读取招标文件并生成 <code>output/new-prompt.md</code>。需要模型已通过测试且招标文件已上传。</p>
         <div class="form-actions">
           <button id="run-step1" class="primary">${T('buttons.runStep1', 'Run Step 1')}</button>
-          ${hasNewPrompt ? `<a id="download-new-prompt" class="ghost export-btn" href="/api/new-prompt/download" download="new-prompt.md">⬇ ${T('buttons.downloadNewPrompt', 'Download new-prompt.md')}</a>` : ''}
+          ${hasNewPrompt ? `<a id="download-new-prompt" class="ghost export-btn" href="/api/output/new-prompt.md/download" download="new-prompt.md">⬇ ${T('buttons.downloadNewPrompt', 'Download new-prompt.md')}</a>` : ''}
         </div>
         <p id="step1-result" class="result-line"></p>
       </div>

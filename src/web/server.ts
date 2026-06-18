@@ -790,6 +790,22 @@ app.get('/api/output/:name', async (request: Request, response: Response) => {
   }
 });
 
+app.get('/api/output/new-prompt.md/download', async (_request: Request, response: Response) => {
+  try {
+    const filePath = path.join(outputDir, 'new-prompt.md');
+    const content = await fs.readFile(filePath, 'utf8');
+    response.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    response.setHeader('Content-Disposition', 'attachment; filename="new-prompt.md"');
+    response.send(content);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      response.status(404).json({ success: false, error: 'new-prompt.md not found' });
+      return;
+    }
+    response.status(500).json({ success: false, error: error instanceof Error ? error.message : 'Download failed' });
+  }
+});
+
 app.get('/api/logs', async (_request: Request, response: Response) => {
   try {
     const session = await readDashboardSession();
