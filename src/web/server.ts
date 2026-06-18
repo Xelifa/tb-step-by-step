@@ -815,6 +815,27 @@ app.get('/api/logs/:name', async (request: Request, response: Response) => {
   }
 });
 
+app.get('/api/new-prompt/download', async (_request: Request, response: Response) => {
+  try {
+    const session = await readDashboardSession();
+    const filePath = path.join(outputDir, 'new-prompt.md');
+    if (!await fileModifiedAfter(filePath, session.last_reset_at)) {
+      response.status(404).json({ error: 'new-prompt.md not found' });
+      return;
+    }
+    const content = await fs.readFile(filePath, 'utf8');
+    response.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    response.setHeader('Content-Disposition', 'attachment; filename="new-prompt.md"');
+    response.send(content);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      response.status(404).json({ error: 'new-prompt.md not found' });
+      return;
+    }
+    response.status(500).json({ error: error instanceof Error ? error.message : 'Download failed' });
+  }
+});
+
 app.listen(port, '127.0.0.1', () => {
   console.log(`TB Step by Step Web UI: http://localhost:${port}`);
 });

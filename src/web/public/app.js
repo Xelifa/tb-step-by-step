@@ -459,12 +459,14 @@ const RENDERERS = {
   },
 
   step1() {
+    const hasNewPrompt = statusState.files.some(f => f.name === 'new-prompt.md');
     const body = document.querySelector('#step-body');
     body.innerHTML = `
       <div class="card-form">
         <p class="hint">读取招标文件并生成 <code>output/new-prompt.md</code>。需要模型已通过测试且招标文件已上传。</p>
         <div class="form-actions">
           <button id="run-step1" class="primary">${T('buttons.runStep1', 'Run Step 1')}</button>
+          ${hasNewPrompt ? `<a id="download-new-prompt" class="ghost export-btn" href="/api/new-prompt/download" download="new-prompt.md">⬇ ${T('buttons.downloadNewPrompt', 'Download new-prompt.md')}</a>` : ''}
         </div>
         <p id="step1-result" class="result-line"></p>
       </div>
@@ -701,6 +703,8 @@ function wireUploadForm() {
 function wireStep1() {
   const btn = document.querySelector('#run-step1');
   const result = document.querySelector('#step1-result');
+  const dlLink = document.querySelector('#download-new-prompt');
+  dlLink?.addEventListener('click', () => showToast('info', 'Downloading new-prompt.md…'));
   btn.addEventListener('click', async () => {
     btn.disabled = true;
     result.textContent = 'Running Step 1…';

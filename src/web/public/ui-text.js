@@ -47,7 +47,8 @@ window.UI_TEXT = {
     generateAllSections: '生成所有剩余章节',
     combineFinal: '合并最终文档',
     downloadDocx: '下载 Word 文档',
-    downloadMd: '下载 Markdown 源文件'
+    downloadMd: '下载 Markdown 源文件',
+    downloadNewPrompt: '下载 new-prompt.md'
   },
 
   // Step panel instructions (shown in the main panel)
